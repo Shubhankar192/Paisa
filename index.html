@@ -251,6 +251,27 @@ function cleanMerchant(n){
   return titleCase(n.split("-")[0].trim());
 }
 const monthKey=(iso)=>(typeof iso==="string"&&iso.length>=7)?iso.slice(0,7):"0000-00";
+
+// A credit counts as real income only if it's salary or bank interest.
+function isIncome(t){
+  if(t.amount<=0) return false;
+  const s=((t.merchant||"")+" "+(t.note||"")).toUpperCase();
+  return /SALARY|ZOHO|INTEREST PAID|INTEREST CREDIT|\bSAL\b/.test(s);
+}
+// Compute income / credits / balances per month from the transactions.
+function monthlyFinancials(txns){
+  const out={}; // mk -> {income, credits, lastBal, lastDate}
+  txns.forEach(t=>{
+    const mk=monthKey(t.date);
+    if(!out[mk]) out[mk]={income:0,credits:0,lastBal:null,lastDate:""};
+    if(t.amount>0){ out[mk].credits+=t.amount; if(isIncome(t)) out[mk].income+=t.amount; }
+    if(typeof t.balance==="number" && t.date>=out[mk].lastDate){ out[mk].lastBal=t.balance; out[mk].lastDate=t.date; }
+  });
+  // opening balance = previous month's closing
+  const keys=Object.keys(out).sort();
+  keys.forEach((mk,i)=>{ out[mk].closing=out[mk].lastBal; out[mk].opening=i>0?out[keys[i-1]].lastBal:null; });
+  return out;
+}
 const MN=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const monthLabel=(k)=>{if(typeof k!=="string"||k.indexOf("-")<0)return"—";const[y,m]=k.split("-");return`${MN[+m-1]||"?"} ${y}`;};
 
@@ -286,7 +307,8 @@ function rowsToTxns(rows){
   const col=names=>{if(!header)return -1; for(const n of names){const i=header.findIndex(h=>h.includes(n)); if(i>=0)return i;} return -1;};
   const ci={date:col(["date"]),narr:col(["narration","description","particular","details","remark"]),
     ref:col(["ref","chq","cheque"]),
-    withdraw:col(["withdrawal","debit","dr"]),deposit:col(["deposit","credit","cr"]),amount:col(["amount"])};
+    withdraw:col(["withdrawal","debit","dr"]),deposit:col(["deposit","credit","cr"]),amount:col(["amount"]),
+    balance:col(["closing balance","balance"])};
   const txns=[];let skipped=0;
   body.forEach((r,idx)=>{
     if(!r.length||r.every(c=>c===""||/^\*+$/.test(c)))return;
@@ -301,9 +323,11 @@ function rowsToTxns(rows){
     const narr=ci.narr>=0?r[ci.narr]:r.join(" ");
     const segs=narr.split("-");
     const ref=(ci.ref>=0&&r[ci.ref])?String(r[ci.ref]).trim():"";
+    const bal=(ci.balance>=0)?num(r[ci.balance]):NaN;
     txns.push({id:`imp-${Date.now()}-${idx}-${Math.random().toString(36).slice(2,6)}`,
       date:iso,merchant:cleanMerchant(narr),note:(segs[segs.length-1]||"").trim().slice(0,30),
-      amount:Math.round(amount*100)/100,category:autoCategory(narr),ref:ref});
+      amount:Math.round(amount*100)/100,category:autoCategory(narr),ref:ref,
+      balance:isNaN(bal)?null:bal});
   });
   return{txns,skipped};
 }
@@ -451,8 +475,13 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
 
   const months=useMemo(()=>[...new Set(txns.map(x=>monthKey(x.date)))].sort(),[txns]);
   const monthTxns=useMemo(()=>txns.filter(x=>monthKey(x.date)===activeMonth).sort((a,b)=>b.date.localeCompare(a.date)),[txns,activeMonth]);
+  const fin=useMemo(()=>monthlyFinancials(txns),[txns]);
   const stats=useMemo(()=>{
-    const inc=income[activeMonth]||0; let spend=0,invest=0,savings=0,ccbill=0,subs=0; const byCat={};
+    const f=fin[activeMonth]||{income:0,credits:0,opening:null,closing:null};
+    // manual override wins if the user explicitly set one for this month
+    const manual=income[activeMonth];
+    const inc=(typeof manual==="number")?manual:f.income;
+    let spend=0,invest=0,savings=0,ccbill=0,subs=0; const byCat={};
     monthTxns.forEach(t=>{
       if(t.category==="Income")return;
       if(t.category==="Investments"){invest+=-Math.min(t.amount,0);return;}
@@ -462,15 +491,17 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
       if(t.category==="Subscriptions")subs+=amt;
       spend+=amt; byCat[t.category]=(byCat[t.category]||0)+amt;
     });
-    return{inc,spend,invest,savings,ccbill,subs,byCat};
-  },[monthTxns,income,activeMonth]);
+    return{inc,spend,invest,savings,ccbill,subs,byCat,
+      credits:f.credits||0, opening:f.opening, closing:f.closing,
+      otherCredits:Math.max((f.credits||0)-(f.income||0),0), autoIncome:f.income||0};
+  },[monthTxns,income,activeMonth,fin]);
 
   return (
     <div style={{position:"relative",minHeight:"100vh"}}>
       <div className="aurora"><b className="a1"/><b className="a2"/><b className="a3"/></div>
       <div style={{position:"relative",zIndex:1}}>
         <Header months={months} activeMonth={activeMonth} setActiveMonth={setActiveMonth}
-          txns={txns} flash={flash} user={user} onSignOut={onSignOut} cloud={cloud}/>
+          txns={txns} flash={flash} user={user} onSignOut={onSignOut} cloud={cloud} setTab={setTab}/>
         <div style={{maxWidth:980,margin:"0 auto",padding:"0 16px"}}>
           <nav style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
             {[["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
@@ -498,7 +529,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
 }
 
 /* ---------------- Header ---------------- */
-function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,cloud}){
+function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,cloud,setTab}){
   const [menu,setMenu]=useState(false);
   const idx=months.indexOf(activeMonth);
   const go=d=>{const n=idx+d; if(n>=0&&n<months.length)setActiveMonth(months[n]);};
@@ -523,6 +554,9 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
         <span style={{fontSize:11,color:"var(--txt3)",letterSpacing:1.5,textTransform:"uppercase"}}>expense tracker</span>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:8}}>
+        <button className="chip primary" onClick={()=>setTab("import")} style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:15}}>↑</span> Import
+        </button>
         <button className="chip ghost" onClick={exportCSV} style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:15}}>↓</span> CSV
         </button>
@@ -559,24 +593,28 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
 
 /* ---------------- Overview ---------------- */
 function Overview({stats,label,income,activeMonth,pInc,flash}){
-  const {inc,spend,invest,savings,ccbill,subs,byCat}=stats;
+  const {inc,spend,invest,savings,ccbill,subs,byCat,credits,opening,closing,otherCredits,autoIncome}=stats;
   const net=inc-spend-invest-savings;
   const rate=inc>0?((invest+savings+Math.max(net,0))/inc)*100:0;
   const [edit,setEdit]=useState(false); const [v,setV]=useState(inc);
   useEffect(()=>setV(inc),[inc,activeMonth]);
   const pie=Object.entries(byCat).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
-  const save=()=>{pInc({...income,[activeMonth]:Number(v)||0});setEdit(false);flash("Income updated");};
+  const isManual=typeof income[activeMonth]==="number";
+  const save=()=>{pInc({...income,[activeMonth]:Number(v)||0});setEdit(false);flash("Income override saved");};
+  const resetAuto=()=>{const c={...income}; delete c[activeMonth]; pInc(c); setEdit(false); flash("Reverted to auto-detected income");};
+  const balDelta=(typeof closing==="number"&&typeof opening==="number")?closing-opening:null;
 
   return (
     <div className="fade">
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
-        <Hero label="Net worth flow" value={INR(net)} accent="#7C5CFF" big
+        <Hero label="Net flow this month" value={INR(net)} accent="#7C5CFF" big
           sub={`Savings rate ${Math.round(rate)}%`} icon="◈"/>
-        <Stat label="Income" value={INR(inc)} accent="#7C5CFF" icon="↗"
+        <Stat label={isManual?"Income (manual)":"Income (auto)"} value={INR(inc)} accent="#7C5CFF" icon="↗"
+          sub={otherCredits>0?`+${INR(otherCredits)} other credits`:"salary + interest"}
           action={edit?(
             <span style={{display:"flex",gap:6}}>
-              <input className="inp" type="number" value={v} onChange={e=>setV(e.target.value)} style={{width:96,padding:"5px 8px"}}/>
-              <button className="chip primary" style={{padding:"6px 12px"}} onClick={save}>Save</button>
+              <input className="inp" type="number" value={v} onChange={e=>setV(e.target.value)} style={{width:88,padding:"5px 8px"}}/>
+              <button className="chip primary" style={{padding:"6px 10px"}} onClick={save}>Set</button>
             </span>
           ):<button className="chip ghost" style={{padding:"5px 12px",fontSize:12}} onClick={()=>setEdit(true)}>Edit</button>}/>
         <Stat label="Spending" value={INR(spend)} accent="#FF8A4C" icon="↘"
@@ -584,6 +622,33 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
         <Stat label="Invested + Saved" value={INR(invest+savings)} accent="#34E29B" icon="✦"
           sub={`MF ${INR(invest)} · FD/RD ${INR(savings)}`}/>
       </div>
+
+      {(typeof closing==="number")&&(
+        <div className="glass" style={{padding:"16px 20px",marginBottom:18,display:"flex",alignItems:"center",
+          gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(0,224,199,.10),rgba(124,92,255,.05))"}}>
+          <div>
+            <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Opening balance</div>
+            <div style={{fontFamily:"Space Grotesk",fontSize:22,fontWeight:700}}>{opening!=null?INR(opening):"—"}</div>
+          </div>
+          <div style={{fontSize:22,color:"var(--txt3)"}}>→</div>
+          <div>
+            <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Closing balance</div>
+            <div style={{fontFamily:"Space Grotesk",fontSize:22,fontWeight:700}}>{INR(closing)}</div>
+          </div>
+          {balDelta!=null&&(
+            <div style={{marginLeft:"auto",textAlign:"right"}}>
+              <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Net change</div>
+              <div style={{fontFamily:"Space Grotesk",fontSize:22,fontWeight:700,color:balDelta>=0?"#34E29B":"#FF5C8A"}}>
+                {balDelta>=0?"+":"−"}{INR(Math.abs(balDelta))}</div>
+            </div>
+          )}
+        </div>
+      )}
+      {edit&&isManual&&(
+        <div style={{margin:"-8px 0 16px"}}>
+          <button className="chip ghost" style={{fontSize:12}} onClick={resetAuto}>↺ Revert to auto-detected income</button>
+        </div>
+      )}
 
       <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:16}}>
         <div className="glass" style={{padding:22}}>
@@ -865,6 +930,7 @@ function Budgets({budgets,pBud,byCat,flash}){
 /* ---------------- Trends ---------------- */
 function Trends({txns,income}){
   const months=[...new Set(txns.map(x=>monthKey(x.date)))].sort();
+  const fin=monthlyFinancials(txns);
   const data=months.map(m=>{
     let spend=0,invest=0,savings=0;
     txns.filter(t=>monthKey(t.date)===m).forEach(t=>{
@@ -873,7 +939,8 @@ function Trends({txns,income}){
       else if(t.category==="Savings/FD")savings+=-Math.min(t.amount,0);
       else if(t.amount<0)spend+=-t.amount;
     });
-    return{month:monthLabel(m).split(" ")[0],Spending:Math.round(spend),Invested:Math.round(invest+savings),Income:income[m]||0};
+    const mInc=(typeof income[m]==="number")?income[m]:(fin[m]?fin[m].income:0);
+    return{month:monthLabel(m).split(" ")[0],Spending:Math.round(spend),Invested:Math.round(invest+savings),Income:Math.round(mInc)};
   });
   const single=months.length<2;
   return (
@@ -1031,7 +1098,8 @@ function sanitizeTxns(arr){
   return arr.filter(t=>t && typeof t.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.amount==="number" && !isNaN(t.amount))
     .map(t=>({id:t.id||("fix-"+Math.random().toString(36).slice(2,8)),
       date:t.date, merchant:t.merchant||"Unknown", note:t.note||"", amount:t.amount,
-      category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc", ref:t.ref||""}));
+      category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc", ref:t.ref||"",
+      balance:(typeof t.balance==="number")?t.balance:null}));
 }
 function loadLocal(userId){
   const ns = userId ? ("u_"+userId+"_") : "anon_";
