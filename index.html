@@ -285,6 +285,7 @@ function rowsToTxns(rows){
   const body=hi>=0?rows.slice(hi+1):rows;
   const col=names=>{if(!header)return -1; for(const n of names){const i=header.findIndex(h=>h.includes(n)); if(i>=0)return i;} return -1;};
   const ci={date:col(["date"]),narr:col(["narration","description","particular","details","remark"]),
+    ref:col(["ref","chq","cheque"]),
     withdraw:col(["withdrawal","debit","dr"]),deposit:col(["deposit","credit","cr"]),amount:col(["amount"])};
   const txns=[];let skipped=0;
   body.forEach((r,idx)=>{
@@ -299,9 +300,10 @@ function rowsToTxns(rows){
     if(isNaN(amount)||amount===0){skipped++;return;}
     const narr=ci.narr>=0?r[ci.narr]:r.join(" ");
     const segs=narr.split("-");
+    const ref=(ci.ref>=0&&r[ci.ref])?String(r[ci.ref]).trim():"";
     txns.push({id:`imp-${Date.now()}-${idx}-${Math.random().toString(36).slice(2,6)}`,
       date:iso,merchant:cleanMerchant(narr),note:(segs[segs.length-1]||"").trim().slice(0,30),
-      amount:Math.round(amount*100)/100,category:autoCategory(narr)});
+      amount:Math.round(amount*100)/100,category:autoCategory(narr),ref:ref});
   });
   return{txns,skipped};
 }
@@ -442,6 +444,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
   },[]);
 
   const pTxns=n=>{setTxns(n);persist({txns:n,income,budgets});};
+  const pTxnsNow=n=>{setTxns(n);persist({txns:n,income,budgets},true);};
   const pInc=n=>{setIncome(n);persist({txns,income:n,budgets});};
   const pBud=n=>{setBudgets(n);persist({txns,income,budgets:n});};
   const flash=m=>{setToast(m);setTimeout(()=>setToast(null),2200);};
@@ -483,7 +486,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           {tab==="subscriptions"&&<Subscriptions all={txns}/>}
           {tab==="budgets"&&<Budgets budgets={budgets} pBud={pBud} byCat={stats.byCat} flash={flash}/>}
           {tab==="trends"&&<Trends txns={txns} income={income}/>}
-          {tab==="import"&&<Importer all={txns} pTxns={pTxns} setActiveMonth={setActiveMonth} setTab={setTab} flash={flash}/>}
+          {tab==="import"&&<Importer all={txns} pTxns={pTxnsNow} setActiveMonth={setActiveMonth} setTab={setTab} flash={flash}/>}
         </main>
       </div>
       {toast&&<div style={{position:"fixed",bottom:26,left:"50%",transform:"translateX(-50%)",
@@ -932,15 +935,21 @@ function Importer({all,pTxns,setActiveMonth,setTab,flash}){
     try{
       const rows=parseCSV(text); const {txns,skipped}=rowsToTxns(rows);
       if(!txns.length){setErr("Couldn't find transactions. Need Date + Description + Amount (or Withdrawal/Deposit) columns.");return;}
-      const ex=new Set(all.map(t=>t.date+"|"+Math.abs(t.amount)+"|"+t.merchant.slice(0,6)));
-      const fresh=txns.filter(t=>!ex.has(t.date+"|"+Math.abs(t.amount)+"|"+t.merchant.slice(0,6)));
-      setPreview({txns:fresh,dupes:txns.length-fresh.length,skipped});
+      // Dedup key: prefer the bank's unique ref number; otherwise fall back to
+      // date + amount + FULL narration so distinct same-amount payments survive.
+      const keyOf=t=>t.ref?("ref:"+t.ref):(t.date+"|"+t.amount+"|"+(t.merchant+t.note));
+      const ex=new Set(all.map(keyOf));
+      const seen=new Set();
+      const fresh=txns.filter(t=>{const k=keyOf(t); if(ex.has(k)||seen.has(k))return false; seen.add(k); return true;});
+      const months=[...new Set(fresh.map(t=>t.date.slice(0,7)))].sort();
+      setPreview({txns:fresh,dupes:txns.length-fresh.length,skipped,months});
     }catch(e){setErr("Parse error: "+e.message);}
   };
   const onFile=e=>{const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=()=>handleText(r.result); r.readAsText(f);};
   const confirm=()=>{const next=[...all,...preview.txns]; pTxns(next);
-    const m=preview.txns[0]?.date?.slice(0,7); if(m)setActiveMonth(m);
-    flash(`Imported ${preview.txns.length} transactions`); setPreview(null); setTab("transactions");};
+    const months=preview.months||[];
+    const m=months[months.length-1]; if(m)setActiveMonth(m);
+    flash(`Imported ${preview.txns.length} transactions across ${months.length} month${months.length>1?"s":""}`); setPreview(null); setTab("transactions");};
   return (
     <div className="fade">
       <div className="glass" style={{padding:22,marginBottom:16}}>
@@ -961,7 +970,12 @@ function Importer({all,pTxns,setActiveMonth,setTab,flash}){
       </div>
       {preview&&(
         <div className="glass pop" style={{padding:22}}>
-          <h3 style={ti}>Preview · {preview.txns.length} new</h3>
+          <h3 style={ti}>Preview · {preview.txns.length} new across {(preview.months||[]).length} months</h3>
+          {(preview.months||[]).length>0&&(
+            <div style={{fontSize:12,color:"var(--accent2)",marginBottom:8}}>
+              {monthLabel(preview.months[0])} → {monthLabel(preview.months[preview.months.length-1])}
+            </div>
+          )}
           <div style={{fontSize:13,color:"var(--txt2)",marginBottom:12}}>
             {preview.dupes>0&&<>Skipped {preview.dupes} likely duplicates. </>}
             {preview.skipped>0&&<>Ignored {preview.skipped} non-transaction rows. </>}Review, then confirm.
@@ -1017,7 +1031,7 @@ function sanitizeTxns(arr){
   return arr.filter(t=>t && typeof t.date==="string" && /^\d{4}-\d{2}-\d{2}$/.test(t.date) && typeof t.amount==="number" && !isNaN(t.amount))
     .map(t=>({id:t.id||("fix-"+Math.random().toString(36).slice(2,8)),
       date:t.date, merchant:t.merchant||"Unknown", note:t.note||"", amount:t.amount,
-      category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc"}));
+      category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc", ref:t.ref||""}));
 }
 function loadLocal(userId){
   const ns = userId ? ("u_"+userId+"_") : "anon_";
@@ -1090,16 +1104,19 @@ function App(){
     }
   }
 
-  // persist: cache locally (per-user) + debounce-push to cloud.
-  const persist=(d)=>{
+  // persist: cache locally (per-user) + push to cloud. immediate=true skips
+  // the debounce so large imports commit atomically right away.
+  const persist=(d,immediate)=>{
     setData(d); saveLocal(user?user.id:null,d);
     if(user && sb){
       setCloud("syncing");
       clearTimeout(saveTimer.current);
-      saveTimer.current=setTimeout(async()=>{
+      const doSave=async()=>{
         try{ await Cloud.save(user.id,d); setCloud("synced"); }
         catch(e){ console.error(e); setCloud("offline"); }
-      },800);
+      };
+      if(immediate){ doSave(); }
+      else { saveTimer.current=setTimeout(doSave,800); }
     }
   };
 
