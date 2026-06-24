@@ -1019,14 +1019,29 @@ function sanitizeTxns(arr){
       date:t.date, merchant:t.merchant||"Unknown", note:t.note||"", amount:t.amount,
       category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc"}));
 }
-function loadLocal(){
+function loadLocal(userId){
+  const ns = userId ? ("u_"+userId+"_") : "anon_";
   return {
-    txns:sanitizeTxns(LS.get("txns",null)||DEFAULTS.txns),
-    income:LS.get("income",null)||DEFAULTS.income,
-    budgets:LS.get("budgets",null)||DEFAULTS.budgets
+    txns:sanitizeTxns(LS.get(ns+"txns",null)||(userId?[]:DEFAULTS.txns)),
+    income:LS.get(ns+"income",null)||(userId?{}:DEFAULTS.income),
+    budgets:LS.get(ns+"budgets",null)||DEFAULTS.budgets
   };
 }
-function saveLocal(d){ LS.set("txns",d.txns); LS.set("income",d.income); LS.set("budgets",d.budgets); }
+function saveLocal(userId,d){
+  const ns = userId ? ("u_"+userId+"_") : "anon_";
+  LS.set(ns+"txns",d.txns); LS.set(ns+"income",d.income); LS.set(ns+"budgets",d.budgets);
+}
+
+// One-time: remove legacy shared cache keys from the buggy version so an
+// old account's data can never be read by a different account.
+(function cleanupLegacyCache(){
+  try{
+    if(!localStorage.getItem("paisa_migrated_v2")){
+      ["paisa_txns","paisa_income","paisa_budgets"].forEach(k=>localStorage.removeItem(k));
+      localStorage.setItem("paisa_migrated_v2","1");
+    }
+  }catch(e){}
+})();
 
 function App(){
   const [phase,setPhase]=useState("boot"); // boot | auth | ready | localonly
@@ -1038,9 +1053,8 @@ function App(){
   // If Supabase isn't configured, run in local-only mode (no login).
   useEffect(()=>{
     if(!SUPABASE_READY || !sb){
-      setData(loadLocal()); setPhase("localonly"); return;
+      setData(loadLocal(null)); setPhase("localonly"); return;
     }
-    // restore session if present
     sb.auth.getSession().then(({data:{session}})=>{
       if(session && session.user){ enter(session.user); }
       else { setPhase("auth"); }
@@ -1057,28 +1071,28 @@ function App(){
     try{
       let remote=await Cloud.load(u.id);
       if(!remote){
-        // First login: migrate whatever is in local cache (or defaults) to cloud.
-        const local=loadLocal();
-        await Cloud.save(u.id, local);
-        remote=local;
+        // Brand-new account: start EMPTY. Never inherit another user's
+        // device cache. (Migration is an explicit opt-in action elsewhere.)
+        const fresh={txns:[],income:{},budgets:DEFAULTS.budgets};
+        await Cloud.save(u.id, fresh);
+        remote=fresh;
       }
-      // normalize
       const d={
-        txns:sanitizeTxns(remote.txns||DEFAULTS.txns),
-        income:remote.income||DEFAULTS.income,
+        txns:sanitizeTxns(remote.txns||[]),
+        income:remote.income||{},
         budgets:remote.budgets||DEFAULTS.budgets
       };
-      setData(d); saveLocal(d); setCloud("synced"); setPhase("ready");
+      setData(d); saveLocal(u.id,d); setCloud("synced"); setPhase("ready");
     }catch(e){
       console.error(e);
-      // fall back to local cache so the user still gets in
-      setData(loadLocal()); setCloud("offline"); setPhase("ready");
+      // fall back to THIS user's own cache only
+      setData(loadLocal(u.id)); setCloud("offline"); setPhase("ready");
     }
   }
 
-  // persist: always cache locally; debounce-push to cloud when signed in.
+  // persist: cache locally (per-user) + debounce-push to cloud.
   const persist=(d)=>{
-    setData(d); saveLocal(d);
+    setData(d); saveLocal(user?user.id:null,d);
     if(user && sb){
       setCloud("syncing");
       clearTimeout(saveTimer.current);
@@ -1089,7 +1103,7 @@ function App(){
     }
   };
 
-  const signOut=async()=>{ if(sb) await sb.auth.signOut(); setUser(null); setData(null); setPhase("auth"); };
+  const signOut=async()=>{ if(sb) await sb.auth.signOut(); setUser(null); setData(null); setCloud("local"); setPhase("auth"); };
 
   if(phase==="boot") return (
     <div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",position:"relative"}}>
