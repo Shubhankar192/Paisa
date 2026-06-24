@@ -93,68 +93,7 @@
     runApp();
   })();
 </script>
-<style>
-  :root{
-    --bg:#0B0F1A; --bg2:#0F1524; --panel:#141B2E; --panel2:#1A2238;
-    --line:#222B45; --line2:#2C3759;
-    --txt:#EAF0FF; --txt2:#9AA7C7; --txt3:#5E6B91;
-    --accent:#7C5CFF; --accent2:#00E0C7; --gold:#FFC34D;
-    --pink:#FF5C8A; --green:#34E29B; --orange:#FF8A4C; --blue:#4DA8FF;
-  }
-  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
-  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
-    font-family:'Inter',-apple-system,system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
-  #root{min-height:100vh;}
-  ::-webkit-scrollbar{width:9px; height:9px;}
-  ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:8px;}
-  ::-webkit-scrollbar-track{background:transparent;}
-  input,select,textarea,button{font-family:inherit;}
-  select option{background:#141B2E; color:#EAF0FF;}
-  input:focus,select:focus,textarea:focus{outline:2px solid rgba(124,92,255,.45); border-color:var(--accent);}
-  @keyframes fade{from{opacity:0; transform:translateY(10px);}to{opacity:1; transform:none;}}
-  @keyframes pop{from{opacity:0; transform:scale(.96);}to{opacity:1; transform:scale(1);}}
-  @keyframes slideUp{from{transform:translate(-50%,20px); opacity:0;}to{transform:translate(-50%,0); opacity:1;}}
-  @keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
-  @keyframes float{0%,100%{transform:translateY(0);}50%{transform:translateY(-6px);}}
-  @keyframes glow{0%,100%{opacity:.5;}50%{opacity:1;}}
-  .fade{animation:fade .45s cubic-bezier(.2,.7,.3,1);}
-  .pop{animation:pop .3s ease;}
-  .aurora{position:fixed; inset:0; z-index:0; overflow:hidden; pointer-events:none;}
-  .aurora b{position:absolute; border-radius:50%; filter:blur(90px); opacity:.30;}
-  .a1{width:480px;height:480px; background:#7C5CFF; top:-160px; left:-120px; animation:float 9s ease-in-out infinite;}
-  .a2{width:420px;height:420px; background:#00E0C7; top:10%; right:-140px; animation:float 11s ease-in-out infinite;}
-  .a3{width:380px;height:380px; background:#FF5C8A; bottom:-160px; left:30%; animation:float 13s ease-in-out infinite; opacity:.18;}
-  .glass{background:linear-gradient(160deg, rgba(26,34,56,.82), rgba(20,27,46,.82));
-    backdrop-filter:blur(18px); -webkit-backdrop-filter:blur(18px);
-    border:1px solid rgba(255,255,255,.06); border-radius:22px;}
-  .chip{border:none; border-radius:12px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s, filter .2s;}
-  .chip:active{transform:scale(.95);}
-  .chip:hover{filter:brightness(1.1);}
-  .primary{background:linear-gradient(135deg,var(--accent),#9A7BFF); color:#fff; box-shadow:0 6px 20px rgba(124,92,255,.35);}
-  .ghost{background:rgba(255,255,255,.06); color:var(--txt2);}
-  .ghost:hover{background:rgba(255,255,255,.1); color:var(--txt);}
-  .tabBtn{position:relative; border:none; background:none; cursor:pointer; padding:14px 4px; font-size:14px; font-weight:600; color:var(--txt3); transition:color .2s; white-space:nowrap;}
-  .tabBtn:hover{color:var(--txt2);}
-  .tabBtn.on{color:var(--txt);}
-  .tabBtn.on::after{content:""; position:absolute; left:0; right:0; bottom:-1px; height:3px; border-radius:3px;
-    background:linear-gradient(90deg,var(--accent),var(--accent2));}
-  .row{transition:background .15s;}
-  .row:hover{background:rgba(255,255,255,.025);}
-  .icoBtn{width:38px;height:38px;border-radius:12px;border:1px solid var(--line); background:rgba(255,255,255,.03);
-    color:var(--txt2); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s;}
-  .icoBtn:hover:not(:disabled){background:rgba(255,255,255,.08); color:var(--txt);}
-  .icoBtn:disabled{opacity:.3; cursor:not-allowed;}
-  .inp{background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--txt);
-    border-radius:12px; padding:11px 14px; font-size:14px; width:100%;}
-  .inp::placeholder{color:var(--txt3);}
-  .miniSel{background:rgba(255,255,255,.04); border:1px solid var(--line); border-radius:9px;
-    padding:5px 7px; font-size:11px; font-weight:700; cursor:pointer;}
-  .del{width:28px;height:28px;border-radius:9px;border:none;background:none;color:var(--txt3);font-size:20px;cursor:pointer; transition:.15s;}
-  .del:hover{color:var(--pink); background:rgba(255,92,138,.12);}
-  .drop{border:2px dashed var(--line2); border-radius:18px; padding:34px 18px; text-align:center; cursor:pointer; transition:.25s; background:rgba(255,255,255,.02);}
-  .drop:hover{border-color:var(--accent); background:rgba(124,92,255,.06);}
-  @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
-</style>
+<link rel="stylesheet" href="styles.css">
 </head>
 <body>
 <div id="root"></div>
@@ -454,12 +393,236 @@ function Auth({onAuthed}){
 
 /* ---------------- app ---------------- */
 /* ---------------- Tracker (main app, data comes from parent) ---------------- */
+/* ============================================================
+   INSIGHTS ENGINE
+   Pure analysis over all transactions -> ranked insight cards.
+   ============================================================ */
+function computeInsights(txns, fin){
+  const ins=[];
+  const months=[...new Set(txns.map(t=>monthKey(t.date)))].sort();
+  if(months.length===0) return ins;
+  const cur=months[months.length-1];
+  const prev=months.length>1?months[months.length-2]:null;
+  const N=(o)=>o||0;
+
+  const spendOf=(mk)=>{let s=0;txns.forEach(t=>{if(monthKey(t.date)===mk&&t.amount<0&&!NONSPEND.has(t.category))s+=-t.amount;});return s;};
+  const catOf=(mk)=>{const c={};txns.forEach(t=>{if(monthKey(t.date)===mk&&t.amount<0&&!NONSPEND.has(t.category))c[t.category]=N(c[t.category])+(-t.amount);});return c;};
+
+  const curSpend=spendOf(cur);
+  const avgSpend=months.length>1?months.slice(0,-1).reduce((a,m)=>a+spendOf(m),0)/(months.length-1):curSpend;
+  const curCats=catOf(cur), prevCats=prev?catOf(prev):{};
+
+  const f=fin[cur]||{income:0};
+  const inv=(()=>{let s=0;txns.forEach(t=>{if(monthKey(t.date)===cur&&(t.category==="Investments"||t.category==="Savings/FD")&&t.amount<0)s+=-t.amount;});return s;})();
+  const net=N(f.income)-curSpend-inv;
+  const rate=f.income>0?Math.round(((inv+Math.max(net,0))/f.income)*100):0;
+  ins.push({id:"rate",tier:1,icon:"◈",tone:rate>=30?"good":rate>=15?"neutral":"warn",
+    title:"Savings rate",value:rate+"%",
+    body:rate>=30?`Strong. You're channeling ${rate}% of income into savings & investments this month.`:
+         rate>=15?`Decent — ${rate}% saved. Pushing past 30% would accelerate your goal.`:
+         `Only ${rate}% saved this month. Worth a look at the movers below.`});
+
+  if(months.length>1){
+    const diff=curSpend-avgSpend; const pct=avgSpend>0?Math.round(diff/avgSpend*100):0;
+    ins.push({id:"vsavg",tier:1,icon:pct>0?"▲":"▼",tone:pct>15?"bad":pct< -10?"good":"neutral",
+      title:"Spending vs your average",value:(pct>=0?"+":"")+pct+"%",
+      body:pct>15?`You spent ${INR(Math.abs(diff))} more than your ${months.length-1}-month average. See which categories below.`:
+           pct< -10?`Nicely under budget — ${INR(Math.abs(diff))} below your usual monthly spend.`:
+           `Right around your typical monthly spend (${INR(avgSpend)}).`});
+  }
+
+  if(prev){
+    const movers=Object.keys({...curCats,...prevCats}).map(c=>({c,diff:N(curCats[c])-N(prevCats[c])}))
+      .filter(x=>Math.abs(x.diff)>200).sort((a,b)=>Math.abs(b.diff)-Math.abs(a.diff));
+    if(movers[0]){const m=movers[0];const base=N(prevCats[m.c]);const pct=base>0?Math.round(m.diff/base*100):100;
+      ins.push({id:"mover",tier:2,icon:m.diff>0?"📈":"📉",tone:m.diff>0?"warn":"good",
+        title:`${m.c} ${m.diff>0?"jumped":"dropped"}`,value:(m.diff>0?"+":"−")+INR(Math.abs(m.diff)),
+        body:`${m.c} went from ${INR(base)} to ${INR(N(curCats[m.c]))} vs last month${base>0?` (${pct>0?"+":""}${pct}%)`:""}.`});}
+  }
+
+  const topCat=Object.entries(curCats).sort((a,b)=>b[1]-a[1])[0];
+  if(topCat){ins.push({id:"top",tier:2,icon:"🏷️",tone:"neutral",title:"Biggest category",value:INR(topCat[1]),
+    body:`${topCat[0]} is your largest spend this month — ${curSpend>0?Math.round(topCat[1]/curSpend*100):0}% of total spending.`});}
+
+  const curTxns=txns.filter(t=>monthKey(t.date)===cur&&t.amount<0&&!NONSPEND.has(t.category)).map(t=>({...t,abs:-t.amount}));
+  if(curTxns.length>3){
+    const mean=curTxns.reduce((a,t)=>a+t.abs,0)/curTxns.length;
+    const big=curTxns.sort((a,b)=>b.abs-a.abs)[0];
+    if(big.abs>mean*4&&big.abs>2000){ins.push({id:"anom",tier:2,icon:"⚡",tone:"warn",title:"Large transaction",value:INR(big.abs),
+      body:`${big.merchant} (${big.note||big.category}) on ${big.date.slice(8)}/${big.date.slice(5,7)} — well above your typical ${INR(mean)} transaction.`});}
+  }
+
+  const subs=txns.filter(t=>t.category==="Subscriptions"&&t.amount<0);
+  if(subs.length){const subMonths=new Set(subs.map(t=>monthKey(t.date))).size;
+    const subTotal=subs.reduce((a,t)=>a+(-t.amount),0);const perMonth=subTotal/Math.max(1,subMonths);
+    ins.push({id:"subs",tier:3,icon:"🔁",tone:"neutral",title:"Subscriptions run-rate",value:INR(perMonth)+"/mo",
+      body:`Recurring services cost about ${INR(perMonth*12)} a year. Trim one you don't use and it compounds.`});}
+
+  const balMonths=months.filter(m=>fin[m]&&typeof fin[m].closing==="number");
+  if(balMonths.length>=3){
+    const first=fin[balMonths[0]].closing, last=fin[balMonths[balMonths.length-1]].closing;
+    const growth=last-first; const perMonth=growth/(balMonths.length-1);
+    ins.push({id:"traj",tier:1,icon:"🚀",tone:perMonth>0?"good":"warn",
+      title:"Balance trajectory",value:(perMonth>=0?"+":"−")+INR(Math.abs(perMonth))+"/mo",
+      body:perMonth>0?`Your balance grew ${INR(growth)} over ${balMonths.length} months — about ${INR(perMonth)}/month. At this pace you'll add ${INR(perMonth*12)} in a year.`:
+        `Your balance dipped over this period. Worth checking the high-spend months.`,
+      spark:balMonths.map(m=>fin[m].closing)});
+  }
+
+  if(months.length>2){
+    const ranked=months.map(m=>({m,s:spendOf(m)})).sort((a,b)=>a.s-b.s);
+    ins.push({id:"best",tier:3,icon:"🏆",tone:"good",title:"Leanest month",value:monthLabel(ranked[0].m),
+      body:`${monthLabel(ranked[0].m)} was your lowest-spend month at ${INR(ranked[0].s)}. ${monthLabel(ranked[ranked.length-1].m)} was highest at ${INR(ranked[ranked.length-1].s)}.`});
+  }
+
+  const today=new Date(); const liveMk=today.toISOString().slice(0,7);
+  if(cur===liveMk){
+    const day=today.getDate(); const daysInMonth=new Date(today.getFullYear(),today.getMonth()+1,0).getDate();
+    const burn=curSpend/day; const projected=burn*daysInMonth;
+    ins.push({id:"burn",tier:2,icon:"🔥",tone:projected>avgSpend*1.1?"warn":"neutral",title:"Projected month-end spend",value:INR(projected),
+      body:`At ${INR(burn)}/day so far, you're on track for ${INR(projected)} by month-end${avgSpend>0?` vs your ${INR(avgSpend)} average`:""}.`});
+  }
+
+  let we=0,wd=0,wec=0,wdc=0;
+  txns.filter(t=>monthKey(t.date)===cur&&t.amount<0&&!NONSPEND.has(t.category)).forEach(t=>{
+    const d=new Date(t.date).getDay(); if(d===0||d===6){we+=-t.amount;wec++;}else{wd+=-t.amount;wdc++;}});
+  if(wec>0&&wdc>0){const weAvg=we/wec,wdAvg=wd/wdc;
+    if(weAvg>wdAvg*1.3)ins.push({id:"weekend",tier:3,icon:"🎉",tone:"neutral",title:"Weekend spender",value:INR(weAvg)+"/txn",
+      body:`Your weekend transactions average ${INR(weAvg)} vs ${INR(wdAvg)} on weekdays — the fun adds up.`});}
+
+  const toneRank={bad:0,warn:1,good:2,neutral:3};
+  return ins.sort((a,b)=>a.tier-b.tier || toneRank[a.tone]-toneRank[b.tone]);
+}
+
+/* ---------------- Insights dashboard ---------------- */
+function Sparkline({data,color}){
+  if(!data||data.length<2)return null;
+  const w=120,h=34,min=Math.min(...data),max=Math.max(...data),rng=max-min||1;
+  const pts=data.map((v,i)=>`${(i/(data.length-1))*w},${h-((v-min)/rng)*h}`).join(" ");
+  return (
+    <svg width={w} height={h} style={{display:"block"}}>
+      <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+      <circle cx={w} cy={h-((data[data.length-1]-min)/rng)*h} r="3" fill={color}/>
+    </svg>
+  );
+}
+
+function HealthRing({score}){
+  const r=54,c=2*Math.PI*r,off=c-(score/100)*c;
+  const col=score>=70?"#34E29B":score>=45?"#FFC34D":"#FF5C8A";
+  return (
+    <div style={{position:"relative",width:140,height:140,flexShrink:0}}>
+      <svg width="140" height="140" style={{transform:"rotate(-90deg)"}}>
+        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="11"/>
+        <circle cx="70" cy="70" r={r} fill="none" stroke={col} strokeWidth="11" strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={off} style={{transition:"stroke-dashoffset 1s cubic-bezier(.2,.7,.3,1)",filter:`drop-shadow(0 0 8px ${col}88)`}}/>
+      </svg>
+      <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
+        <div style={{fontFamily:"Space Grotesk",fontSize:38,fontWeight:700,color:col,lineHeight:1}}>{score}</div>
+        <div style={{fontSize:10,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1}}>health</div>
+      </div>
+    </div>
+  );
+}
+
+function computeHealth(txns,fin){
+  const months=[...new Set(txns.map(t=>monthKey(t.date)))].sort();
+  if(!months.length)return{score:50,label:"—"};
+  const cur=months[months.length-1]; const f=fin[cur]||{income:0};
+  let spend=0,inv=0;txns.forEach(t=>{if(monthKey(t.date)===cur){if((t.category==="Investments"||t.category==="Savings/FD")&&t.amount<0)inv+=-t.amount;else if(t.amount<0&&!NONSPEND.has(t.category))spend+=-t.amount;}});
+  const rate=f.income>0?(inv+Math.max(f.income-spend-inv,0))/f.income:0;
+  let sc=0;
+  sc+=Math.min(45,rate*100*1.5);
+  if(months.length>1){const avg=months.slice(0,-1).reduce((a,m)=>{let s=0;txns.forEach(t=>{if(monthKey(t.date)===m&&t.amount<0&&!NONSPEND.has(t.category))s+=-t.amount;});return a+s;},0)/(months.length-1);
+    const dev=avg>0?Math.abs(spend-avg)/avg:0; sc+=Math.max(0,25-dev*40);}else sc+=15;
+  const bm=months.filter(m=>fin[m]&&typeof fin[m].closing==="number");
+  if(bm.length>=2){const g=fin[bm[bm.length-1]].closing-fin[bm[0]].closing; sc+=g>0?30:5;}else sc+=15;
+  const score=Math.max(5,Math.min(99,Math.round(sc)));
+  const label=score>=70?"Excellent":score>=55?"Healthy":score>=40?"Fair":"Needs attention";
+  return{score,label};
+}
+
+const TONE={good:{bg:"rgba(52,226,155,.10)",bd:"rgba(52,226,155,.30)",c:"#34E29B"},
+  warn:{bg:"rgba(255,195,77,.10)",bd:"rgba(255,195,77,.30)",c:"#FFC34D"},
+  bad:{bg:"rgba(255,92,138,.10)",bd:"rgba(255,92,138,.30)",c:"#FF5C8A"},
+  neutral:{bg:"rgba(124,92,255,.08)",bd:"rgba(124,92,255,.22)",c:"#9A7BFF"}};
+
+function Insights({txns,fin,setTab}){
+  const insights=useMemo(()=>computeInsights(txns,fin),[txns,fin]);
+  const health=useMemo(()=>computeHealth(txns,fin),[txns,fin]);
+  const months=[...new Set(txns.map(t=>monthKey(t.date)))].sort();
+  const heat=months.slice(-12).map(m=>{let s=0;txns.forEach(t=>{if(monthKey(t.date)===m&&t.amount<0&&!NONSPEND.has(t.category))s+=-t.amount;});return{m,s};});
+  const maxHeat=Math.max(...heat.map(h=>h.s),1);
+
+  if(txns.length===0)return (
+    <div className="glass fade" style={{padding:40,textAlign:"center"}}>
+      <div style={{fontSize:42}}>✦</div>
+      <h3 style={{fontFamily:"Sora",marginTop:10}}>No insights yet</h3>
+      <p style={{color:"var(--txt2)",fontSize:14}}>Import a statement and your personalized financial intelligence appears here.</p>
+      <button className="chip primary" style={{marginTop:8}} onClick={()=>setTab("import")}>↑ Import a statement</button>
+    </div>
+  );
+
+  return (
+    <div className="fade">
+      <div className="glass" style={{padding:26,marginBottom:18,display:"flex",gap:26,alignItems:"center",flexWrap:"wrap",
+        background:"linear-gradient(135deg,rgba(124,92,255,.16),rgba(0,224,199,.07))",border:"1px solid rgba(124,92,255,.22)"}}>
+        <HealthRing score={health.score}/>
+        <div style={{flex:1,minWidth:200}}>
+          <div style={{fontSize:12,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1.2}}>Financial health</div>
+          <div style={{fontFamily:"Sora",fontSize:30,fontWeight:800,letterSpacing:-.5,margin:"2px 0 6px"}}>{health.label}</div>
+          <p style={{fontSize:13.5,color:"var(--txt2)",lineHeight:1.6,margin:0,maxWidth:460}}>
+            A blend of your savings rate, spending consistency and balance growth. {months.length} month{months.length>1?"s":""} analyzed —
+            every card below is computed from your real transactions.
+          </p>
+        </div>
+      </div>
+
+      {heat.length>1&&(
+        <div className="glass" style={{padding:"16px 20px",marginBottom:18}}>
+          <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.8,marginBottom:12}}>Spending intensity · last {heat.length} months</div>
+          <div style={{display:"flex",gap:5,alignItems:"flex-end",height:64}}>
+            {heat.map(h=>{const pct=h.s/maxHeat;const col=pct>.8?"#FF5C8A":pct>.55?"#FF8A4C":pct>.3?"#FFC34D":"#34E29B";
+              return (
+                <div key={h.m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
+                  <div title={INR(h.s)} style={{width:"100%",height:`${Math.max(8,pct*48)}px`,borderRadius:5,
+                    background:`linear-gradient(180deg,${col},${col}99)`,boxShadow:`0 0 8px ${col}55`,transition:"height .5s"}}/>
+                  <div style={{fontSize:9,color:"var(--txt3)"}}>{monthLabel(h.m).split(" ")[0]}</div>
+                </div>
+              );})}
+          </div>
+        </div>
+      )}
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+        {insights.map((it,i)=>{const t=TONE[it.tone]||TONE.neutral;
+          return (
+            <div key={it.id} className="glass pop" style={{padding:18,border:`1px solid ${t.bd}`,background:t.bg,
+              animationDelay:`${i*0.04}s`,position:"relative",overflow:"hidden"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+                <div style={{display:"flex",alignItems:"center",gap:8}}>
+                  <span style={{fontSize:20}}>{it.icon}</span>
+                  <span style={{fontSize:13,fontWeight:600,color:"var(--txt2)"}}>{it.title}</span>
+                </div>
+                {it.tier===1&&<span style={{fontSize:9,fontWeight:700,color:t.c,border:`1px solid ${t.bd}`,
+                  borderRadius:20,padding:"2px 8px",textTransform:"uppercase",letterSpacing:.5}}>key</span>}
+              </div>
+              <div style={{fontFamily:"Space Grotesk",fontSize:26,fontWeight:700,color:t.c,margin:"10px 0 6px",letterSpacing:-.5}}>{it.value}</div>
+              <p style={{fontSize:13,color:"var(--txt2)",lineHeight:1.55,margin:0}}>{it.body}</p>
+              {it.spark&&<div style={{marginTop:12}}><Sparkline data={it.spark} color={t.c}/></div>}
+            </div>
+          );})}
+      </div>
+    </div>
+  );
+}
+
 function Tracker({initial, persist, user, onSignOut, cloud}){
   const [txns,setTxns]=useState(initial.txns);
   const [income,setIncome]=useState(initial.income);
   const [budgets,setBudgets]=useState(initial.budgets);
   const [activeMonth,setActiveMonth]=useState(null);
-  const [tab,setTab]=useState("overview");
+  const [tab,setTab]=useState("insights");
   const [toast,setToast]=useState(null);
 
   useEffect(()=>{
@@ -504,13 +667,14 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           txns={txns} flash={flash} user={user} onSignOut={onSignOut} cloud={cloud} setTab={setTab}/>
         <div style={{maxWidth:980,margin:"0 auto",padding:"0 16px"}}>
           <nav style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
-            {[["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
+            {[["insights","✦ Insights"],["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
               ["budgets","Budgets"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
               <button key={k} className={"tabBtn"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{l}</button>
             ))}
           </nav>
         </div>
         <main style={{maxWidth:980,margin:"0 auto",padding:"22px 16px 80px"}}>
+          {tab==="insights"&&<Insights txns={txns} fin={fin} setTab={setTab}/>}
           {tab==="overview"&&<Overview stats={stats} label={monthLabel(activeMonth)} income={income}
             activeMonth={activeMonth} pInc={pInc} flash={flash}/>}
           {tab==="transactions"&&<Transactions txns={monthTxns} all={txns} pTxns={pTxns} flash={flash} monthLabel={monthLabel(activeMonth)}/>}
