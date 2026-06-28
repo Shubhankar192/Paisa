@@ -166,7 +166,7 @@ function autoCategory(n){
   const has=a=>a.some(k=>s.includes(k)); const nh=a=>a.some(k=>note.includes(k));
   if(has(["GROWW","MUTUAL FUNDS ICCL","MONTHLY SIP","GROWW.BRK"]))return"Investments";
   if(has(["FD THROUGH MOBILE","RD THROUGH MOBILE"]))return"Savings/FD";
-  if(has(["AUTO_REDEM","AUTO_REDEEM","SALARY","PSP ZOHO"]))return"Income";
+  if(has(["SALARY","PAYROLL","WAGES"]))return"Income";
   if(detectSub(s))return"Subscriptions";
   if(has(["CRED CLUB"])||nh(["PAYMENT ON CRED"]))return"Credit Card Bill";
   if(has(["SWIGGY","ZOMATO","DOMINOS","KFC","CAFE COFFEE","CHAI","TEA SHOP","TIFFINS","RESTAURANT","FOODS","BENE DOSA","CJB","FRIED AND BUN"]))return"Food & Dining";
@@ -194,8 +194,9 @@ const monthKey=(iso)=>(typeof iso==="string"&&iso.length>=7)?iso.slice(0,7):"000
 // A credit counts as real income only if it's salary or bank interest.
 function isIncome(t){
   if(t.amount<=0) return false;
+  if(t.category==="Income") return true;            // explicit manual income
   const s=((t.merchant||"")+" "+(t.note||"")).toUpperCase();
-  return /SALARY|ZOHO|INTEREST PAID|INTEREST CREDIT|\bSAL\b/.test(s);
+  return /\bSALARY\b|\bSAL\b|INTEREST PAID|INTEREST CREDIT|\bPAYROLL\b|\bWAGES\b/.test(s);
 }
 // Compute income / credits / balances per month from the transactions.
 function monthlyFinancials(txns){
@@ -575,7 +576,7 @@ function Insights({txns,fin,income,setTab}){
 
   return (
     <div className="fade">
-      <div className="glass" style={{padding:26,marginBottom:18,display:"flex",gap:26,alignItems:"center",flexWrap:"wrap",
+      <div className="glass hero-card" style={{padding:26,marginBottom:18,display:"flex",gap:26,alignItems:"center",flexWrap:"wrap",
         background:"linear-gradient(135deg,rgba(124,92,255,.16),rgba(0,224,199,.07))",border:"1px solid rgba(124,92,255,.22)"}}>
         <HealthRing score={health.score}/>
         <div style={{flex:1,minWidth:200}}>
@@ -604,7 +605,7 @@ function Insights({txns,fin,income,setTab}){
         </div>
       )}
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
+      <div className="insight-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:14}}>
         {insights.map((it,i)=>{const t=TONE[it.tone]||TONE.neutral;
           return (
             <div key={it.id} className="glass pop" style={{padding:18,border:`1px solid ${t.bd}`,background:t.bg,
@@ -637,7 +638,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
 
   useEffect(()=>{
     const ms=[...new Set(txns.map(x=>monthKey(x.date)))].sort();
-    setActiveMonth(ms[ms.length-1]||"2026-05");
+    setActiveMonth(ms[ms.length-1]||new Date().toISOString().slice(0,7));
   },[]);
 
   const pTxns=n=>{setTxns(n);persist({txns:n,income,budgets});};
@@ -676,14 +677,14 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
         <Header months={months} activeMonth={activeMonth} setActiveMonth={setActiveMonth}
           txns={txns} flash={flash} user={user} onSignOut={onSignOut} cloud={cloud} setTab={setTab}/>
         <div style={{maxWidth:980,margin:"0 auto",padding:"0 16px"}}>
-          <nav style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
+          <nav className="tabs-nav" style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
             {[["insights","✦ Insights"],["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
               ["budgets","Budgets"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
               <button key={k} className={"tabBtn"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{l}</button>
             ))}
           </nav>
         </div>
-        <main style={{maxWidth:980,margin:"0 auto",padding:"22px 16px 80px"}}>
+        <main className="app-main" style={{maxWidth:980,margin:"0 auto",padding:"22px 16px 80px"}}>
           {tab==="insights"&&<Insights txns={txns} fin={fin} income={income} setTab={setTab}/>}
           {tab==="overview"&&<Overview stats={stats} label={monthLabel(activeMonth)} income={income}
             activeMonth={activeMonth} pInc={pInc} flash={flash}/>}
@@ -720,14 +721,14 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
     flash("CSV exported");
   };
   return (
-    <header style={{display:"flex",justifyContent:"space-between",alignItems:"center",
+    <header className="app-header" style={{display:"flex",justifyContent:"space-between",alignItems:"center",
       padding:"18px 16px",maxWidth:980,margin:"0 auto",gap:12,flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
         <span style={{fontFamily:"Sora",fontSize:30,fontWeight:800,letterSpacing:-1,
           background:"linear-gradient(135deg,#7C5CFF,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</span>
-        <span style={{fontSize:11,color:"var(--txt3)",letterSpacing:1.5,textTransform:"uppercase"}}>expense tracker</span>
+        <span className="brand-tag" style={{fontSize:11,color:"var(--txt3)",letterSpacing:1.5,textTransform:"uppercase"}}>expense tracker</span>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:8}}>
+      <div className="header-actions" style={{display:"flex",alignItems:"center",gap:8}}>
         <button className="chip primary" onClick={()=>setTab("import")} style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:15}}>↑</span> Import
         </button>
@@ -783,7 +784,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 
   return (
     <div className="fade">
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
+      <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
         <Hero label="Net flow this month" value={INR(net)} accent="#7C5CFF" big
           sub={`Savings rate ${Math.round(rate)}%`} icon="◈"/>
         <Stat label="Income" value={INR(inc)} accent="#7C5CFF" icon="↗"
@@ -801,11 +802,11 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
           <p style={{fontSize:12.5,color:"var(--txt3)",margin:"0 0 16px",lineHeight:1.6}}>
             Priority: a month override beats your default salary, which beats auto-detected income. Set a default once and every month is covered.
           </p>
-          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16}}>
+          <div className="form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:16}}>
             <div>
               <label style={lbl}>Monthly salary (all months)</label>
               <div style={{display:"flex",gap:8,marginTop:6}}>
-                <input className="inp" type="number" placeholder="e.g. 73785" value={salary} onChange={e=>setSalary(e.target.value)}/>
+                <input className="inp" type="number" placeholder="e.g. 50000" value={salary} onChange={e=>setSalary(e.target.value)}/>
                 <button className="chip primary" onClick={saveSalary}>Save</button>
               </div>
               <div style={{fontSize:11,color:"var(--txt3)",marginTop:6}}>{income.default?`Currently ${INR(income.default)} for every month`:"Not set"}</div>
@@ -825,7 +826,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
       )}
 
       {(typeof closing==="number")&&(
-        <div className="glass" style={{padding:"16px 20px",marginBottom:18,display:"flex",alignItems:"center",
+        <div className="glass balance-band" style={{padding:"16px 20px",marginBottom:18,display:"flex",alignItems:"center",
           gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(0,224,199,.10),rgba(124,92,255,.05))"}}>
           <div>
             <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Opening balance</div>
@@ -845,7 +846,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
           )}
         </div>
       )}
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:16}}>
+      <div className="ov-charts" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(320px,1fr))",gap:16}}>
         <div className="glass" style={{padding:22}}>
           <h3 style={ti}>Where it went · {label}</h3>
           {pie.length===0?<Empty msg="No spending recorded this month."/>:(
@@ -958,13 +959,15 @@ function Transactions({txns,all,pTxns,flash,monthLabel}){
           <div key={t.id} className="row" style={{display:"flex",alignItems:"center",gap:11,padding:"12px 16px 12px 0",borderBottom:"1px solid var(--line)"}}>
             <span style={{width:4,height:40,borderRadius:4,background:colorFor(t.category),boxShadow:`0 0 10px ${colorFor(t.category)}66`,flexShrink:0}}/>
             <div style={{flex:1,minWidth:0}}>
-              <div style={{fontSize:14,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.merchant}</div>
+              <div style={{fontSize:14,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
+                {t.merchant}{t.manual&&<span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",border:"1px solid rgba(0,224,199,.3)",borderRadius:6,padding:"1px 5px",marginLeft:6,verticalAlign:"middle"}}>manual</span>}
+              </div>
               <div style={{fontSize:12,color:"var(--txt3)",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.date.slice(8)}/{t.date.slice(5,7)} · {t.note||"—"}</div>
             </div>
-            <select className="miniSel" value={t.category} onChange={e=>setCat(t.id,e.target.value)} style={{color:colorFor(t.category),maxWidth:140}}>
+            <select className="miniSel txn-cat" value={t.category} onChange={e=>setCat(t.id,e.target.value)} style={{color:colorFor(t.category),maxWidth:140}}>
               {CATEGORIES.map(c=><option key={c} value={c} style={{color:"#EAF0FF"}}>{c}</option>)}
             </select>
-            <span style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk",width:104,textAlign:"right",
+            <span className="txn-amt" style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk",width:104,textAlign:"right",
               color:credit?"#34E29B":"var(--txt)"}}>{credit?"+":"−"}{INR2(Math.abs(t.amount))}</span>
             <button className="del" onClick={()=>remove(t.id)}>×</button>
           </div>
@@ -975,23 +978,31 @@ function Transactions({txns,all,pTxns,flash,monthLabel}){
   );
 }
 function AddRow({onAdd,onCancel,defMonth}){
-  const today=(defMonth||"2026-05")+"-15";
-  const [f,setF]=useState({date:today,merchant:"",note:"",amount:"",category:"Food & Dining",type:"debit"});
+  const todayISO=new Date().toISOString().slice(0,10);
+  const def=(defMonth&&defMonth!==todayISO.slice(0,7))?defMonth+"-15":todayISO;
+  const [f,setF]=useState({date:def,merchant:"",note:"",amount:"",category:"Food & Dining",type:"debit"});
   const submit=()=>{const amt=Math.abs(Number(f.amount)||0); if(!amt||!f.merchant)return;
     onAdd({id:`man-${Date.now()}-${Math.random().toString(36).slice(2,6)}`,date:f.date,merchant:titleCase(f.merchant),
-      note:f.note,amount:f.type==="credit"?amt:-amt,category:f.category});};
+      note:f.note,amount:f.type==="credit"?amt:-amt,category:f.category,ref:"",balance:null,manual:true});};
   return (
     <div className="glass pop" style={{padding:18,marginBottom:14,border:"1px dashed var(--line2)"}}>
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9}}>
+      <div style={{display:"flex",gap:6,marginBottom:12}}>
+        {["debit","credit"].map(ty=>(
+          <button key={ty} className={"chip "+(f.type===ty?"primary":"ghost")} style={{flex:1,fontSize:13}}
+            onClick={()=>setF({...f,type:ty,category:ty==="credit"?"Income":"Food & Dining"})}>
+            {ty==="debit"?"💸 Expense":"💰 Income / received"}
+          </button>
+        ))}
+      </div>
+      <div className="form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(140px,1fr))",gap:9}}>
         <input className="inp" type="date" value={f.date} onChange={e=>setF({...f,date:e.target.value})}/>
-        <input className="inp" placeholder="Merchant" value={f.merchant} onChange={e=>setF({...f,merchant:e.target.value})}/>
-        <input className="inp" placeholder="Note" value={f.note} onChange={e=>setF({...f,note:e.target.value})}/>
-        <input className="inp" type="number" placeholder="Amount" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/>
+        <input className="inp" placeholder={f.type==="credit"?"Source (e.g. Salary)":"Merchant / payee"} value={f.merchant} onChange={e=>setF({...f,merchant:e.target.value})}/>
+        <input className="inp" placeholder="Note (optional)" value={f.note} onChange={e=>setF({...f,note:e.target.value})}/>
+        <input className="inp" type="number" placeholder="Amount ₹" value={f.amount} onChange={e=>setF({...f,amount:e.target.value})}/>
         <select className="inp" value={f.category} onChange={e=>setF({...f,category:e.target.value})}>{CATEGORIES.map(c=><option key={c}>{c}</option>)}</select>
-        <select className="inp" value={f.type} onChange={e=>setF({...f,type:e.target.value})}><option value="debit">Spent</option><option value="credit">Received</option></select>
       </div>
       <div style={{display:"flex",gap:8,marginTop:11}}>
-        <button className="chip primary" onClick={submit}>Add transaction</button>
+        <button className="chip primary" onClick={submit}>Add {f.type==="credit"?"income":"expense"}</button>
         <button className="chip ghost" onClick={onCancel}>Cancel</button>
       </div>
     </div>
@@ -1031,7 +1042,7 @@ function Subscriptions({all}){
 
   return (
     <div className="fade">
-      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
+      <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
         <Stat label="Active subscriptions" value={list.length} accent="#FFC34D" icon="✦"/>
         <Stat label="Monthly run-rate" value={INR(monthlyEst)} accent="#FF8A4C" icon="↻"
           sub={`~${INR(monthlyEst*12)} / year`}/>
@@ -1096,7 +1107,7 @@ function Budgets({budgets,pBud,byCat,flash}){
           const spent=byCat[c]||0; const cap=Number(d[c])||0;
           const pct=cap>0?Math.min(spent/cap*100,100):0; const over=cap>0&&spent>cap;
           return (
-            <div key={c} style={{display:"grid",gridTemplateColumns:"160px 1fr 96px",alignItems:"center",gap:13,padding:"11px 0",borderBottom:"1px solid var(--line)"}}>
+            <div key={c} className="budget-row" style={{display:"grid",gridTemplateColumns:"160px 1fr 96px",alignItems:"center",gap:13,padding:"11px 0",borderBottom:"1px solid var(--line)"}}>
               <div style={{display:"flex",alignItems:"center",gap:8,minWidth:0}}>
                 <span style={{width:10,height:10,borderRadius:3,background:colorFor(c),flexShrink:0}}/>
                 <span style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"var(--txt2)"}}>{c}</span>
@@ -1112,7 +1123,7 @@ function Budgets({budgets,pBud,byCat,flash}){
                   {over&&<span style={{color:"#FF5C8A",fontWeight:700}}> · over by {INR(spent-cap)}</span>}
                 </div>
               </div>
-              <input className="inp" type="number" placeholder="—" value={d[c]||""} onChange={e=>setD({...d,[c]:e.target.value})} style={{textAlign:"right",padding:"8px 10px"}}/>
+              <input className="inp budget-input" type="number" placeholder="—" value={d[c]||""} onChange={e=>setD({...d,[c]:e.target.value})} style={{textAlign:"right",padding:"8px 10px"}}/>
             </div>
           );
         })}
@@ -1143,7 +1154,7 @@ function Trends({txns,income}){
       <div className="glass" style={{padding:22,marginBottom:16}}>
         <h3 style={ti}>Income · Spending · Invested</h3>
         {single&&<Empty msg="One month loaded. Import more statements to unlock month-over-month trend lines."/>}
-        <div style={{height:300}}>
+        <div className="chart-box" style={{height:300}}>
           <RC.ResponsiveContainer>
             {single?(
               <RC.BarChart data={data}>
@@ -1172,7 +1183,7 @@ function Trends({txns,income}){
       {!single&&(
         <div className="glass" style={{padding:22}}>
           <h3 style={ti}>Spending by month</h3>
-          <div style={{height:240}}>
+          <div className="chart-box" style={{height:240}}>
             <RC.ResponsiveContainer>
               <RC.BarChart data={data}>
                 <RC.CartesianGrid strokeDasharray="3 3" stroke="#222B45" vertical={false}/>
@@ -1281,13 +1292,13 @@ const lbl={fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpaci
 const tip={background:"#141B2E",border:"1px solid #2C3759",borderRadius:12,color:"#EAF0FF",fontSize:13};
 
 /* ---------------- SEED ---------------- */
-const SEED=[{"id":"m2026-05-000","date":"2026-05-01","merchant":"Sankar D","note":"UPI","amount":-5347.0,"category":"Other / Misc"},{"id":"m2026-05-001","date":"2026-05-02","merchant":"Green Land","note":"CHOCLATES AND PEPP","amount":-770.0,"category":"Food & Dining"},{"id":"m2026-05-002","date":"2026-05-02","merchant":"H R Legacy","note":"ICE CREAM","amount":-240.0,"category":"Food & Dining"},{"id":"m2026-05-003","date":"2026-05-03","merchant":"Cred Club","note":"PAYMENT ON CRED","amount":-8836.0,"category":"Credit Card Bill"},{"id":"m2026-05-004","date":"2026-05-03","merchant":"Cred Club","note":"PAYMENT ON CRED","amount":-6342.0,"category":"Credit Card Bill"},{"id":"m2026-05-005","date":"2026-05-03","merchant":"Kothapatnam Sainadh","note":"RENT MAY AND EB","amount":-5859.0,"category":"Rent & Utilities"},{"id":"m2026-05-006","date":"2026-05-04","merchant":"Mutual Funds Iccl","note":"PAID VIA ELEMENTS","amount":-10000.0,"category":"Investments"},{"id":"m2026-05-007","date":"2026-05-04","merchant":"Mutual Funds Iccl","note":"PAID VIA ELEMENTS","amount":-10000.0,"category":"Investments"},{"id":"m2026-05-008","date":"2026-05-04","merchant":"Blinkit","note":"PAY VIA RAZORPAY","amount":-253.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-009","date":"2026-05-04","merchant":"Blinkit","note":"REFUND FOR BLINKIT","amount":253.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-010","date":"2026-05-05","merchant":"YouTube Premium","note":"MANDATEEXECUTE","amount":-219.0,"category":"Subscriptions","sub":"YouTube Premium"},{"id":"m2026-05-011","date":"2026-05-05","merchant":"Zepto","note":"PAYMENT ON CRED","amount":-110.0,"category":"Credit Card Bill"},{"id":"m2026-05-012","date":"2026-05-07","merchant":"Mohana Priya Super M","note":"PAID VIA CRED","amount":-30.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-013","date":"2026-05-08","merchant":"Apollo Pharmacy","note":"PAYMENT FOR 164682","amount":-82.4,"category":"Health & Pharmacy"},{"id":"m2026-05-014","date":"2026-05-08","merchant":"Psp Zoho Corporation Pvt Ltd","note":"PSP ZOHO CORPORATION PVT LTD","amount":225000.0,"category":"Income"},{"id":"m2026-05-015","date":"2026-05-08","merchant":"Nithila Enterprises","note":"PAID VIA CRED","amount":-350.0,"category":"Other / Misc"},{"id":"m2026-05-016","date":"2026-05-08","merchant":"Jabir Ali","note":"PAID VIA CRED","amount":-12.0,"category":"Other / Misc"},{"id":"m2026-05-017","date":"2026-05-08","merchant":"Jabir Ali","note":"PAID VIA CRED","amount":-20.0,"category":"Other / Misc"},{"id":"m2026-05-018","date":"2026-05-09","merchant":"Mohana Priya Super M","note":"PAID VIA CRED","amount":-36.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-019","date":"2026-05-09","merchant":"Lancor Holdings Limi","note":"PAID VIA CRED","amount":-268.5,"category":"Other / Misc"},{"id":"m2026-05-020","date":"2026-05-09","merchant":"Lancor Holdings Limi","note":"CILANTRO DINNER","amount":-1102.5,"category":"Food & Dining"},{"id":"m2026-05-021","date":"2026-05-09","merchant":"16468 Apollo Pharmac","note":"AZEE","amount":-151.02,"category":"Health & Pharmacy"},{"id":"m2026-05-022","date":"2026-05-10","merchant":"Chai Kings Guduvanch","note":"LATE NIGHT SNACKS","amount":-876.0,"category":"Food & Dining"},{"id":"m2026-05-023","date":"2026-05-10","merchant":"Pop It Out","note":"5544516788","amount":-1358.3,"category":"Other / Misc"},{"id":"m2026-05-024","date":"2026-05-10","merchant":"Zepto","note":"PAYMENT ON CRED","amount":-1363.0,"category":"Credit Card Bill"},{"id":"m2026-05-025","date":"2026-05-10","merchant":"Zepto","note":"PAYMENT ON CRED","amount":-232.0,"category":"Credit Card Bill"},{"id":"m2026-05-026","date":"2026-05-10","merchant":"Blinkit","note":"PAY VIA RAZORPAY","amount":-215.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-027","date":"2026-05-10","merchant":"Dominos","note":"UPIINTENT","amount":-1522.84,"category":"Food & Dining"},{"id":"m2026-05-028","date":"2026-05-10","merchant":"Dominos Pizza","note":"WATER","amount":-60.0,"category":"Food & Dining"},{"id":"m2026-05-029","date":"2026-05-11","merchant":"Zepto","note":"PAYMENT ON CRED","amount":-100.0,"category":"Credit Card Bill"},{"id":"m2026-05-030","date":"2026-05-11","merchant":"Rst Tea Shop","note":"PAID VIA CRED","amount":-12.0,"category":"Food & Dining"},{"id":"m2026-05-031","date":"2026-05-11","merchant":"Cafe Coffee Day Gst","note":"COFFEE","amount":-410.0,"category":"Food & Dining"},{"id":"m2026-05-032","date":"2026-05-12","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-20000.0,"category":"Investments"},{"id":"m2026-05-033","date":"2026-05-12","merchant":"Mohana Priya Super M","note":"ORANGE JUICE","amount":-25.0,"category":"Food & Dining"},{"id":"m2026-05-034","date":"2026-05-13","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-20000.0,"category":"Investments"},{"id":"m2026-05-035","date":"2026-05-14","merchant":"Int. Auto_Redemption  50301067925563","note":"INT. AUTO_REDEMPTION  50301067","amount":21555.0,"category":"Income"},{"id":"m2026-05-036","date":"2026-05-14","merchant":"Prin And Int Auto_Redeem 50301067925563","note":"PRIN AND INT AUTO_REDEEM 50301","amount":190000.0,"category":"Income"},{"id":"m2026-05-037","date":"2026-05-14","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-22000.0,"category":"Investments"},{"id":"m2026-05-038","date":"2026-05-14","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-1500.0,"category":"Investments"},{"id":"m2026-05-039","date":"2026-05-14","merchant":"Lenskart","note":"PAYMENT FOR 100611","amount":-8889.0,"category":"Shopping"},{"id":"m2026-05-040","date":"2026-05-14","merchant":"New Omr Sports Arena","note":"SHUTTLE","amount":-230.0,"category":"Sports & Leisure"},{"id":"m2026-05-041","date":"2026-05-15","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-5000.0,"category":"Investments"},{"id":"m2026-05-042","date":"2026-05-16","merchant":"Sasikala  Janarthana","note":"PAID VIA CRED","amount":-28.0,"category":"Other / Misc"},{"id":"m2026-05-043","date":"2026-05-16","merchant":"Nithila Enterprises","note":"PAID VIA CRED","amount":-350.0,"category":"Other / Misc"},{"id":"m2026-05-044","date":"2026-05-16","merchant":"Makemytrip India Pri","note":"REDBUS","amount":-1569.84,"category":"Travel & Transport"},{"id":"m2026-05-045","date":"2026-05-16","merchant":"Lancor Holdings Limi","note":"BREAKFAST","amount":-415.0,"category":"Food & Dining"},{"id":"m2026-05-046","date":"2026-05-16","merchant":"Muhammed Nisar","note":"MINT MOJITO","amount":-90.0,"category":"Food & Dining"},{"id":"m2026-05-047","date":"2026-05-17","merchant":"Lancor Holdings Limi","note":"CILANTRO","amount":-389.0,"category":"Food & Dining"},{"id":"m2026-05-048","date":"2026-05-17","merchant":"Hariharan Agency","note":"PAID VIA CRED","amount":-350.0,"category":"Other / Misc"},{"id":"m2026-05-049","date":"2026-05-17","merchant":"Mohamed Faisal","note":"PAID VIA CRED","amount":-15.0,"category":"Other / Misc"},{"id":"m2026-05-050","date":"2026-05-17","merchant":"Mohamed Faisal","note":"PAID VIA CRED","amount":-5.0,"category":"Other / Misc"},{"id":"m2026-05-051","date":"2026-05-18","merchant":"Sasikala  Janarthana","note":"PAID VIA CRED","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-052","date":"2026-05-18","merchant":"Netflix","note":"ME DC SI 416021XXXXXX1999 NETF","amount":-499.0,"category":"Subscriptions","sub":"Netflix"},{"id":"m2026-05-053","date":"2026-05-18","merchant":"Tiffins","note":"BENE DOSA","amount":-845.0,"category":"Food & Dining"},{"id":"m2026-05-054","date":"2026-05-18","merchant":"Cd Agencies","note":"PAID VIA CRED","amount":-350.0,"category":"Other / Misc"},{"id":"m2026-05-055","date":"2026-05-18","merchant":"Lishyaa Snaacks","note":"PAID VIA CRED","amount":-26.0,"category":"Other / Misc"},{"id":"m2026-05-056","date":"2026-05-18","merchant":"Lishyaa Snaacks","note":"LEMON JUICE","amount":-40.0,"category":"Food & Dining"},{"id":"m2026-05-057","date":"2026-05-19","merchant":"Groww Invest Tech Pv","note":"PAID VIA ELEMENTS","amount":-1500.0,"category":"Investments"},{"id":"m2026-05-058","date":"2026-05-19","merchant":"Fd Through Mobile","note":"50301354956391:SHUBHANKAR ANAN","amount":-250000.0,"category":"Savings/FD"},{"id":"m2026-05-059","date":"2026-05-19","merchant":"Rd Through Mobile","note":"50400381794390  :SHUBHANKAR AN","amount":-15000.0,"category":"Savings/FD"},{"id":"m2026-05-060","date":"2026-05-19","merchant":"Mutual Funds Iccl","note":"PAID VIA ELEMENTS","amount":-10000.0,"category":"Investments"},{"id":"m2026-05-061","date":"2026-05-19","merchant":"Mohana Priya Super M","note":"GATORADE","amount":-50.0,"category":"Food & Dining"},{"id":"m2026-05-062","date":"2026-05-20","merchant":"Sasikala  Janarthana","note":"PAID VIA CRED","amount":-22.0,"category":"Other / Misc"},{"id":"m2026-05-063","date":"2026-05-20","merchant":"Srinivasan S","note":"PAID VIA CRED","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-064","date":"2026-05-20","merchant":"New Omr Sports Arena","note":"PAID VIA CRED","amount":-50.0,"category":"Sports & Leisure"},{"id":"m2026-05-065","date":"2026-05-21","merchant":"Shubhankar Anand Kul","note":"MONTHLY SIP","amount":-16000.0,"category":"Investments"},{"id":"m2026-05-066","date":"2026-05-21","merchant":"Mutual Funds Iccl","note":"PAID VIA ELEMENTS","amount":-12000.0,"category":"Investments"},{"id":"m2026-05-067","date":"2026-05-21","merchant":"Najeeb R M","note":"FRIED AND BUN","amount":-728.0,"category":"Food & Dining"},{"id":"m2026-05-068","date":"2026-05-21","merchant":"Jaya Siva Foods","note":"CJB","amount":-375.0,"category":"Food & Dining"},{"id":"m2026-05-069","date":"2026-05-21","merchant":"Najeeb R M","note":"PAID VIA CRED","amount":-429.0,"category":"Other / Misc"},{"id":"m2026-05-070","date":"2026-05-21","merchant":"Srinivasan S","note":"PAID VIA CRED","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-071","date":"2026-05-22","merchant":"Sasikala  Janarthana","note":"PAYMENT FROM PHONE","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-072","date":"2026-05-22","merchant":"Sasikala  Janarthana","note":"PAID VIA CRED","amount":-60.0,"category":"Other / Misc"},{"id":"m2026-05-073","date":"2026-05-22","merchant":"Rokesh S","note":"POPCORN","amount":-109.0,"category":"Food & Dining"},{"id":"m2026-05-074","date":"2026-05-22","merchant":"Musk And Tusk","note":"PAID VIA CRED","amount":-170.0,"category":"Other / Misc"},{"id":"m2026-05-075","date":"2026-05-22","merchant":"Jabir Ali","note":"PAID VIA CRED","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-076","date":"2026-05-23","merchant":"Indian Railways","note":"COLLECT","amount":-3484.5,"category":"Travel & Transport"},{"id":"m2026-05-077","date":"2026-05-23","merchant":"Nithila Enterprises","note":"PETROL","amount":-500.0,"category":"Fuel"},{"id":"m2026-05-078","date":"2026-05-24","merchant":"Rst Tea Shop","note":"PAID VIA CRED","amount":-25.0,"category":"Food & Dining"},{"id":"m2026-05-079","date":"2026-05-24","merchant":"Rst Tea Shop","note":"PAID VIA CRED","amount":-25.0,"category":"Food & Dining"},{"id":"m2026-05-080","date":"2026-05-24","merchant":"Kk Super Market","note":"PAID VIA CRED","amount":-174.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-081","date":"2026-05-25","merchant":"Sasikala  Janarthana","note":"PAID VIA CRED","amount":-25.0,"category":"Other / Misc"},{"id":"m2026-05-082","date":"2026-05-26","merchant":"S K Info Systems","note":"JDS S22 BATTERY RE","amount":-1000.0,"category":"Electronics & Repairs"},{"id":"m2026-05-083","date":"2026-05-26","merchant":"Apple Services","note":"EXECUTION TEST","amount":-1912.0,"category":"Subscriptions","sub":"Apple Services"},{"id":"m2026-05-084","date":"2026-05-27","merchant":"Blinkit","note":"PAY VIA RAZORPAY","amount":-222.0,"category":"Groceries & Quick-commerce"},{"id":"m2026-05-085","date":"2026-05-27","merchant":"S K Info Systems","note":"JD PHONE BATTERY","amount":-1812.0,"category":"Electronics & Repairs"},{"id":"m2026-05-086","date":"2026-05-27","merchant":"Kfc","note":"PAYMENT FOR OTNE37","amount":-1014.25,"category":"Food & Dining"},{"id":"m2026-05-087","date":"2026-05-28","merchant":"Arjun Kishor Wankhed","note":"SPLITWISE","amount":-876.0,"category":"Friends & Splitwise"},{"id":"m2026-05-088","date":"2026-05-28","merchant":"Passport Seva Projec","note":"MOPSUPITXN","amount":-2000.0,"category":"Govt & Fees"},{"id":"m2026-05-089","date":"2026-05-28","merchant":"Mmr Frost Enterprise","note":"POLAR BEAR","amount":-773.0,"category":"Food & Dining"},{"id":"m2026-05-090","date":"2026-05-28","merchant":"Mmr Frost Enterprise","note":"POLAR BEAR 2","amount":-334.0,"category":"Food & Dining"},{"id":"m2026-05-091","date":"2026-05-29","merchant":"Salary Zoho Corporation Pvt Ltd","note":"SALARY ZOHO CORPORATION PVT LT","amount":73785.0,"category":"Income"},{"id":"m2026-05-092","date":"2026-05-30","merchant":"Frozen Delight","note":"ICECREAM","amount":-190.0,"category":"Food & Dining"}];
+const SEED=[];
 
 /* ---------------- App: auth + data orchestration ---------------- */
 const DEFAULTS={
   txns:SEED,
-  income:{"2026-05":73785},
-  budgets:{"Food & Dining":8000,"Groceries & Quick-commerce":3000,"Shopping":5000,"Subscriptions":3000,"Travel & Transport":4000}
+  income:{},  // no preset salary; user sets it via Overview → Income → Set
+  budgets:{"Food & Dining":8000,"Groceries & Quick-commerce":3000,"Shopping":5000,"Subscriptions":2000,"Travel & Transport":4000}
 };
 function sanitizeTxns(arr){
   if(!Array.isArray(arr)) return [];
@@ -1295,7 +1306,7 @@ function sanitizeTxns(arr){
     .map(t=>({id:t.id||("fix-"+Math.random().toString(36).slice(2,8)),
       date:t.date, merchant:t.merchant||"Unknown", note:t.note||"", amount:t.amount,
       category:CATEGORIES.indexOf(t.category)>=0?t.category:"Other / Misc", ref:t.ref||"",
-      balance:(typeof t.balance==="number")?t.balance:null}));
+      balance:(typeof t.balance==="number")?t.balance:null, manual:!!t.manual}));
 }
 function loadLocal(userId){
   const ns = userId ? ("u_"+userId+"_") : "anon_";
