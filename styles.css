@@ -58,3 +58,43 @@
   .drop{border:2px dashed var(--line2); border-radius:18px; padding:34px 18px; text-align:center; cursor:pointer; transition:.25s; background:rgba(255,255,255,.02);}
   .drop:hover{border-color:var(--accent); background:rgba(124,92,255,.06);}
   @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
+  /* ---------------- Responsive / mobile ---------------- */
+  /* Tablets and below */
+  @media (max-width: 720px){
+    .glass{border-radius:18px;}
+    .app-main{padding:16px 12px 70px !important;}
+    .app-header{padding:14px 12px !important;}
+    /* charts and chart rows stack */
+    .ov-charts{grid-template-columns:1fr !important;}
+  }
+  /* Phones */
+  @media (max-width: 540px){
+    :root{font-size:15px;}
+    .app-header{flex-wrap:wrap; gap:10px !important;}
+    .brand-tag{display:none;}              /* hide "expense tracker" subtitle on phones */
+    .header-actions{width:100%; justify-content:space-between;}
+    .chip{padding:9px 14px;}
+    .tabs-nav{gap:14px !important;}
+    .tabBtn{padding:12px 2px; font-size:13px;}
+    /* stat grids: 2 columns max on phones */
+    .stat-grid{grid-template-columns:1fr 1fr !important; gap:10px !important;}
+    .hero-card{flex-direction:column; text-align:center; gap:14px !important;}
+    /* budget rows: stack label over bar, input full width below */
+    .budget-row{grid-template-columns:1fr !important; gap:7px !important;}
+    .budget-row .budget-input{width:100% !important;}
+    /* transaction rows: tighten, let category select drop to its own line */
+    .txn-amt{width:auto !important; min-width:84px;}
+    .txn-cat{max-width:108px;}
+    /* income editor + add form: single column */
+    .form-grid{grid-template-columns:1fr !important;}
+    /* insight cards: single column */
+    .insight-grid{grid-template-columns:1fr !important;}
+    /* balance band wraps cleanly */
+    .balance-band{gap:14px !important;}
+    /* map/charts keep height sensible */
+    .chart-box{height:240px !important;}
+  }
+  /* Very small phones */
+  @media (max-width: 380px){
+    .stat-grid{grid-template-columns:1fr !important;}
+  }
