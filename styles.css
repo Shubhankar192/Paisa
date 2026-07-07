@@ -98,3 +98,13 @@
   @media (max-width: 380px){
     .stat-grid{grid-template-columns:1fr !important;}
   }
+
+  /* ---------------- Device polish ---------------- */
+  body{padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);}
+  .app-header{position:sticky; top:0; z-index:40;
+    background:linear-gradient(180deg, rgba(11,15,26,.92), rgba(11,15,26,.75));
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  .tabs-nav{position:sticky; top:0; z-index:39; background:rgba(11,15,26,.85);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
+  button, select, .chip, .icoBtn{touch-action:manipulation;}  /* kill 300ms tap delay */
+  .txnRowWrap{overscroll-behavior:contain;}
