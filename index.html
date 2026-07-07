@@ -104,7 +104,7 @@
 <div id="root"></div>
 <div id="boot" style="position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:24px;font-family:system-ui;color:#EAF0FF;z-index:9999;background:#0B0F1A">
   <div style="max-width:520px;text-align:center">
-    <div style="font-size:30px;font-weight:800;background:linear-gradient(135deg,#7C5CFF,#00E0C7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">paisa</div>
+    <div style="font-size:30px;font-weight:800;background:linear-gradient(135deg,#00B386,#00E0C7);-webkit-background-clip:text;-webkit-text-fill-color:transparent">paisa</div>
     <div id="bootmsg" style="margin-top:14px;font-size:14px;color:#9AA7C7;line-height:1.6"></div>
   </div>
 </div>
@@ -127,6 +127,7 @@
   });
 </script>
 <script type="text/plain" id="appcode">
+const APP_VERSION="v2.1.0";  // bump on every release; shown in header + account menu
 const {useState,useEffect,useMemo,useRef} = React;
 const HAS_CHARTS = (typeof Recharts!=="undefined") && Recharts && Recharts.ResponsiveContainer;
 const ChartStub = ()=> <div style={{height:"100%",minHeight:120,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--txt3)",fontSize:13,textAlign:"center",padding:20}}>Chart library didn't load — reload to retry. All other features work.</div>;
@@ -143,11 +144,11 @@ const CATEGORIES=["Food & Dining","Groceries & Quick-commerce","Rent & Utilities
  "Credit Card Bill","Other / Misc","Investments","Savings/FD","Income"];
 const NONSPEND=new Set(["Investments","Savings/FD","Income"]);
 const CAT_COLOR={
- "Food & Dining":"#FF8A4C","Groceries & Quick-commerce":"#34E29B","Rent & Utilities":"#9A7BFF",
+ "Food & Dining":"#FF8A4C","Groceries & Quick-commerce":"#34E29B","Rent & Utilities":"#2ECFA0",
  "Travel & Transport":"#00E0C7","Fuel":"#4DA8FF","Shopping":"#FF5C8A","Health & Pharmacy":"#5FD0C0",
  "Subscriptions":"#FFC34D","Sports & Leisure":"#56CCF2","Electronics & Repairs":"#C49A6C",
  "Friends & Splitwise":"#FF77A9","Govt & Fees":"#8794B8","Credit Card Bill":"#E0B84D",
- "Other / Misc":"#6E7BA0","Investments":"#34E29B","Savings/FD":"#00E0C7","Income":"#7C5CFF"};
+ "Other / Misc":"#6E7BA0","Investments":"#34E29B","Savings/FD":"#00E0C7","Income":"#00B386"};
 const colorFor=(c)=>CAT_COLOR[c]||"#6E7BA0";
 
 const SUB_SERVICES=[
@@ -399,7 +400,7 @@ function Auth({onAuthed}){
       <div className="glass fade" style={{position:"relative",zIndex:1,width:"100%",maxWidth:400,padding:30}}>
         <div style={{textAlign:"center",marginBottom:24}}>
           <div style={{fontFamily:"Sora",fontSize:40,fontWeight:800,letterSpacing:-1,
-            background:"linear-gradient(135deg,#7C5CFF,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</div>
+            background:"linear-gradient(135deg,#00B386,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</div>
           <div style={{fontSize:13,color:"var(--txt3)",marginTop:2}}>{mode==="signin"?"Welcome back":"Create your account"}</div>
         </div>
 
@@ -592,7 +593,7 @@ function computeHealth(txns,fin,income){
 const TONE={good:{bg:"rgba(52,226,155,.10)",bd:"rgba(52,226,155,.30)",c:"#34E29B"},
   warn:{bg:"rgba(255,195,77,.10)",bd:"rgba(255,195,77,.30)",c:"#FFC34D"},
   bad:{bg:"rgba(255,92,138,.10)",bd:"rgba(255,92,138,.30)",c:"#FF5C8A"},
-  neutral:{bg:"rgba(124,92,255,.08)",bd:"rgba(124,92,255,.22)",c:"#9A7BFF"}};
+  neutral:{bg:"rgba(0,179,134,.08)",bd:"rgba(0,179,134,.22)",c:"#2ECFA0"}};
 
 function Insights({txns,fin,income,setTab}){
   const insights=useMemo(()=>computeInsights(txns,fin,income),[txns,fin,income]);
@@ -613,7 +614,7 @@ function Insights({txns,fin,income,setTab}){
   return (
     <div className="fade">
       <div className="glass hero-card" style={{padding:26,marginBottom:18,display:"flex",gap:26,alignItems:"center",flexWrap:"wrap",
-        background:"linear-gradient(135deg,rgba(124,92,255,.16),rgba(0,224,199,.07))",border:"1px solid rgba(124,92,255,.22)"}}>
+        background:"linear-gradient(135deg,rgba(0,179,134,.16),rgba(0,224,199,.07))",border:"1px solid rgba(0,179,134,.22)"}}>
         <HealthRing score={health.score}/>
         <div style={{flex:1,minWidth:200}}>
           <div style={{fontSize:12,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1.2}}>Financial health</div>
@@ -707,7 +708,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
         <div style={{maxWidth:980,margin:"0 auto",padding:"0 16px"}}>
           <nav className="tabs-nav" style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
             {[["insights","✦ Insights"],["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
-              ["budgets","Budgets"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
+              ["budgets","Budgets"],["goals","🎯 Goals"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
               <button key={k} className={"tabBtn"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{l}</button>
             ))}
           </nav>
@@ -719,13 +720,14 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           {tab==="transactions"&&<Transactions txns={monthTxns} all={txns} pTxns={pTxns} flash={flash} monthLabel={monthLabel(activeMonth)}/>}
           {tab==="subscriptions"&&<Subscriptions all={txns}/>}
           {tab==="budgets"&&<Budgets budgets={budgets} pBud={pBud} byCat={stats.byCat} flash={flash}/>}
+          {tab==="goals"&&<Goals txns={txns} fin={fin} income={income} budgets={budgets} pBud={pBud} flash={flash}/>}
           {tab==="trends"&&<Trends txns={txns} income={income}/>}
           {tab==="import"&&<Importer all={txns} pTxns={pTxnsNow} setActiveMonth={setActiveMonth} setTab={setTab} flash={flash}/>}
         </main>
       </div>
       {toast&&<div style={{position:"fixed",bottom:26,left:"50%",transform:"translateX(-50%)",
-        background:"linear-gradient(135deg,#7C5CFF,#9A7BFF)",color:"#fff",padding:"12px 22px",
-        borderRadius:14,fontSize:14,fontWeight:600,zIndex:100,boxShadow:"0 8px 30px rgba(124,92,255,.45)",
+        background:"linear-gradient(135deg,#00B386,#2ECFA0)",color:"#fff",padding:"12px 22px",
+        borderRadius:14,fontSize:14,fontWeight:600,zIndex:100,boxShadow:"0 8px 30px rgba(0,179,134,.45)",
         animation:"slideUp .3s ease"}}>{toast}</div>}
     </div>
   );
@@ -753,8 +755,9 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
       padding:"18px 16px",maxWidth:980,margin:"0 auto",gap:12,flexWrap:"wrap"}}>
       <div style={{display:"flex",alignItems:"baseline",gap:10}}>
         <span style={{fontFamily:"Sora",fontSize:30,fontWeight:800,letterSpacing:-1,
-          background:"linear-gradient(135deg,#7C5CFF,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</span>
+          background:"linear-gradient(135deg,#00B386,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</span>
         <span className="brand-tag" style={{fontSize:11,color:"var(--txt3)",letterSpacing:1.5,textTransform:"uppercase"}}>expense tracker</span>
+        <span style={{fontSize:10,fontWeight:700,color:"var(--accent2)",border:"1px solid rgba(0,224,199,.35)",borderRadius:20,padding:"2px 8px"}}>{APP_VERSION}</span>
       </div>
       <div className="header-actions" style={{display:"flex",alignItems:"center",gap:8}}>
         <button className="chip primary" onClick={()=>setTab("import")} style={{display:"flex",alignItems:"center",gap:6}}>
@@ -772,7 +775,7 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
         {user&&(
           <div style={{position:"relative"}}>
             <button className="icoBtn" onClick={()=>setMenu(!menu)} title={user.email}
-              style={{background:"linear-gradient(135deg,#7C5CFF,#00E0C7)",color:"#fff",fontWeight:700,border:"none"}}>
+              style={{background:"linear-gradient(135deg,#00B386,#00E0C7)",color:"#fff",fontWeight:700,border:"none"}}>
               {(user.email||"?")[0].toUpperCase()}
             </button>
             {menu&&(
@@ -785,6 +788,7 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
                   {cloud==="synced"?"Synced to cloud":cloud==="syncing"?"Syncing…":cloud==="local"?"Local only":"Offline"}
                 </div>
                 <button className="chip ghost" style={{width:"100%"}} onClick={()=>{setMenu(false);onSignOut();}}>Sign out</button>
+                <div style={{fontSize:10,color:"var(--txt3)",textAlign:"center",marginTop:8}}>Paisa {APP_VERSION}</div>
               </div>
             )}
           </div>
@@ -813,9 +817,9 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
   return (
     <div className="fade">
       <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
-        <Hero label="Net flow this month" value={INR(net)} accent="#7C5CFF" big
+        <Hero label="Net flow this month" value={INR(net)} accent="#00B386" big
           sub={`Savings rate ${Math.round(rate)}%`} icon="◈"/>
-        <Stat label="Income" value={INR(inc)} accent="#7C5CFF" icon="↗"
+        <Stat label="Income" value={INR(inc)} accent="#00B386" icon="↗"
           sub={`${incomeSource}${otherCredits>0?` · +${INR(otherCredits)} other`:""}`}
           action={<button className="chip ghost" style={{padding:"5px 12px",fontSize:12}} onClick={()=>setEdit(!edit)}>{edit?"Close":"Set"}</button>}/>
         <Stat label="Spending" value={INR(spend)} accent="#FF8A4C" icon="↘"
@@ -825,7 +829,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
       </div>
 
       {edit&&(
-        <div className="glass pop" style={{padding:20,marginBottom:18,border:"1px solid rgba(124,92,255,.25)"}}>
+        <div className="glass pop" style={{padding:20,marginBottom:18,border:"1px solid rgba(0,179,134,.25)"}}>
           <h3 style={{fontFamily:"Sora",fontSize:15,margin:"0 0 4px"}}>Set income</h3>
           <p style={{fontSize:12.5,color:"var(--txt3)",margin:"0 0 16px",lineHeight:1.6}}>
             Priority: a month override beats your default salary, which beats auto-detected income. Set a default once and every month is covered.
@@ -855,7 +859,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 
       {(typeof closing==="number")&&(
         <div className="glass balance-band" style={{padding:"16px 20px",marginBottom:18,display:"flex",alignItems:"center",
-          gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(0,224,199,.10),rgba(124,92,255,.05))"}}>
+          gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(0,224,199,.10),rgba(0,179,134,.05))"}}>
           <div>
             <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Opening balance</div>
             <div style={{fontFamily:"Space Grotesk",fontSize:22,fontWeight:700}}>{opening!=null?INR(opening):"—"}</div>
@@ -911,7 +915,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 
         <div className="glass" style={{padding:22}}>
           <h3 style={ti}>Money flow</h3>
-          <Flow label="Income" value={inc} max={inc} color="#7C5CFF"/>
+          <Flow label="Income" value={inc} max={inc} color="#00B386"/>
           <Flow label="Spending" value={spend} max={inc} color="#FF8A4C"/>
           <Flow label="Investments (MF/SIP)" value={invest} max={inc} color="#34E29B"/>
           <Flow label="FD / RD" value={savings} max={inc} color="#00E0C7"/>
@@ -928,8 +932,8 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 function Hero({label,value,sub,accent,icon}){
   return (
     <div className="glass" style={{padding:"20px 22px",gridColumn:"1 / -1",
-      background:"linear-gradient(135deg,rgba(124,92,255,.18),rgba(0,224,199,.08))",
-      border:"1px solid rgba(124,92,255,.25)",position:"relative",overflow:"hidden"}}>
+      background:"linear-gradient(135deg,rgba(0,179,134,.18),rgba(0,224,199,.08))",
+      border:"1px solid rgba(0,179,134,.25)",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",right:-10,top:-10,fontSize:90,opacity:.08}}>{icon}</div>
       <div style={{fontSize:12,color:"var(--txt2)",fontWeight:600,textTransform:"uppercase",letterSpacing:1}}>{label}</div>
       <div style={{fontFamily:"Space Grotesk",fontSize:40,fontWeight:700,letterSpacing:-1,marginTop:4}}>{value}</div>
@@ -1125,7 +1129,8 @@ function Subscriptions({all}){
 function Budgets({budgets,pBud,byCat,flash}){
   const [d,setD]=useState(budgets); useEffect(()=>setD(budgets),[budgets]);
   const cats=CATEGORIES.filter(c=>!NONSPEND.has(c));
-  const save=()=>{const clean={}; Object.entries(d).forEach(([k,v])=>{if(Number(v)>0)clean[k]=Number(v);}); pBud(clean); flash("Budgets saved");};
+  const save=()=>{const clean=budgets._goals?{_goals:budgets._goals}:{};
+    Object.entries(d).forEach(([k,v])=>{if(k!=="_goals"&&Number(v)>0)clean[k]=Number(v);}); pBud(clean); flash("Budgets saved");};
   return (
     <div className="fade">
       <div className="glass" style={{padding:22}}>
@@ -1162,6 +1167,81 @@ function Budgets({budgets,pBud,byCat,flash}){
 }
 
 /* ---------------- Trends ---------------- */
+/* ---------------- Goals: target corpus with live projection ---------------- */
+function Goals({txns,fin,income,budgets,pBud,flash}){
+  const goal=(budgets._goals&&budgets._goals[0])||null;
+  const [name,setName]=useState(goal?goal.name:"");
+  const [target,setTarget]=useState(goal?goal.target:"");
+  const [by,setBy]=useState(goal?goal.by:"");
+  const months=[...new Set(txns.map(t=>monthKey(t.date)))].sort();
+
+  // current corpus = latest known closing balance
+  const balMonths=months.filter(m=>fin[m]&&typeof fin[m].closing==="number");
+  const corpus=balMonths.length?fin[balMonths[balMonths.length-1]].closing:0;
+  // savings pace = average (income - spend) across known months
+  const paces=months.map(m=>resolveIncome(income,fin,m)-monthMetrics(txns,m).spend).filter(v=>isFinite(v));
+  const pace=paces.length?paces.reduce((a,b)=>a+b,0)/paces.length:0;
+
+  const save=()=>{
+    if(!(Number(target)>0)){flash("Enter a target amount");return;}
+    const g=[{name:name||"My goal",target:Number(target),by:by||null,created:new Date().toISOString().slice(0,10)}];
+    pBud({...budgets,_goals:g}); flash("Goal saved");
+  };
+  const clear=()=>{const b={...budgets}; delete b._goals; pBud(b); setName("");setTarget("");setBy(""); flash("Goal removed");};
+
+  const pct=goal&&goal.target>0?Math.min(100,Math.round(corpus/goal.target*100)):0;
+  const remaining=goal?Math.max(goal.target-corpus,0):0;
+  const monthsNeeded=(pace>0&&remaining>0)?Math.ceil(remaining/pace):null;
+  const eta=monthsNeeded!=null?(()=>{const d=new Date();d.setMonth(d.getMonth()+monthsNeeded);return monthLabel(d.toISOString().slice(0,7));})():null;
+  let onTrack=null;
+  if(goal&&goal.by&&monthsNeeded!=null){
+    const tgt=new Date(goal.by+"-01"); const etaD=new Date(); etaD.setMonth(etaD.getMonth()+monthsNeeded);
+    onTrack=etaD<=tgt;
+  }
+
+  return (
+    <div className="fade">
+      {goal&&(
+        <div className="glass" style={{padding:26,marginBottom:18,background:"linear-gradient(135deg,rgba(0,179,134,.16),rgba(255,195,77,.06))",border:"1px solid rgba(0,179,134,.28)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
+            <div>
+              <div style={{fontSize:12,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1}}>🎯 {goal.name}</div>
+              <div style={{fontFamily:"Space Grotesk",fontSize:34,fontWeight:700,letterSpacing:-1,margin:"4px 0"}}>{INR(corpus)} <span style={{fontSize:16,color:"var(--txt3)"}}>of {INR(goal.target)}</span></div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontFamily:"Space Grotesk",fontSize:30,fontWeight:700,color:"#FFC34D"}}>{pct}%</div>
+              {goal.by&&<div style={{fontSize:12,color:"var(--txt3)"}}>target: {monthLabel(goal.by)}</div>}
+            </div>
+          </div>
+          <div style={{height:14,background:"rgba(255,255,255,.06)",borderRadius:8,overflow:"hidden",margin:"14px 0 10px"}}>
+            <div style={{height:"100%",width:pct+"%",borderRadius:8,transition:"width 1s cubic-bezier(.2,.7,.3,1)",
+              background:"linear-gradient(90deg,#00B386,#FFC34D)",boxShadow:"0 0 14px rgba(0,179,134,.6)"}}/>
+          </div>
+          <div style={{fontSize:13.5,color:"var(--txt2)",lineHeight:1.7}}>
+            {remaining>0?<>
+              {INR(remaining)} to go. At your average pace of <b style={{color:"var(--txt)"}}>{INR(pace)}/month</b>{eta?<>, you'll reach it around <b style={{color:"#FFC34D"}}>{eta}</b></>:", set a positive savings pace to project an arrival date"}.
+              {onTrack!=null&&<span style={{marginLeft:6,fontWeight:700,color:onTrack?"#34E29B":"#FF5C8A"}}>{onTrack?"✓ On track":"⚠ Behind schedule"}</span>}
+            </>:<b style={{color:"#34E29B"}}>Goal reached! 🎉</b>}
+          </div>
+          <div style={{fontSize:11,color:"var(--txt3)",marginTop:10}}>Corpus = latest account closing balance · pace = avg(income − spending) across {paces.length} months. Investments held elsewhere aren't counted.</div>
+        </div>
+      )}
+      <div className="glass" style={{padding:22}}>
+        <h3 style={ti}>{goal?"Edit goal":"Set a goal"}</h3>
+        <div className="form-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12}}>
+          <div><label style={lbl}>Goal name</label><input className="inp" style={{marginTop:6}} placeholder="e.g. Wedding fund" value={name} onChange={e=>setName(e.target.value)}/></div>
+          <div><label style={lbl}>Target amount ₹</label><input className="inp" style={{marginTop:6}} type="number" placeholder="e.g. 1500000" value={target} onChange={e=>setTarget(e.target.value)}/></div>
+          <div><label style={lbl}>Target month (optional)</label><input className="inp" style={{marginTop:6}} type="month" value={by||""} onChange={e=>setBy(e.target.value)}/></div>
+        </div>
+        <div style={{display:"flex",gap:8,marginTop:14}}>
+          <button className="chip primary" onClick={save}>Save goal</button>
+          {goal&&<button className="chip ghost" onClick={clear}>Remove</button>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Trends({txns,income}){
   const months=[...new Set(txns.map(x=>monthKey(x.date)))].sort();
   const fin=monthlyFinancials(txns);
@@ -1184,7 +1264,7 @@ function Trends({txns,income}){
                 <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#9AA7C7"}}/>
                 <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#5E6B91"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Bar dataKey="Income" fill="#7C5CFF" radius={[6,6,0,0]}/>
+                <RC.Bar dataKey="Income" fill="#00B386" radius={[6,6,0,0]}/>
                 <RC.Bar dataKey="Spending" fill="#FF8A4C" radius={[6,6,0,0]}/>
                 <RC.Bar dataKey="Invested" fill="#34E29B" radius={[6,6,0,0]}/>
               </RC.BarChart>
@@ -1194,7 +1274,7 @@ function Trends({txns,income}){
                 <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#9AA7C7"}}/>
                 <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#5E6B91"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Line dataKey="Income" stroke="#7C5CFF" strokeWidth={3} dot={{r:4,fill:"#7C5CFF"}}/>
+                <RC.Line dataKey="Income" stroke="#00B386" strokeWidth={3} dot={{r:4,fill:"#00B386"}}/>
                 <RC.Line dataKey="Spending" stroke="#FF8A4C" strokeWidth={3} dot={{r:4,fill:"#FF8A4C"}}/>
                 <RC.Line dataKey="Invested" stroke="#34E29B" strokeWidth={3} dot={{r:4,fill:"#34E29B"}}/>
               </RC.LineChart>
@@ -1424,7 +1504,7 @@ function App(){
       <div className="aurora"><b className="a1"/><b className="a2"/></div>
       <div style={{position:"relative",textAlign:"center"}}>
         <div style={{fontFamily:"Sora",fontSize:46,fontWeight:800,letterSpacing:-1,
-          background:"linear-gradient(135deg,#7C5CFF,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</div>
+          background:"linear-gradient(135deg,#00B386,#00E0C7)",WebkitBackgroundClip:"text",WebkitTextFillColor:"transparent"}}>paisa</div>
         <div style={{color:"#5E6B91",fontSize:13}}>loading your money…</div>
       </div>
     </div>
