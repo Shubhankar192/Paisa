@@ -64,6 +64,11 @@
       "https://unpkg.com/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js",
       "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.0/dist/umd/supabase.min.js"
     ], "supabase");
+    await loadFirst([
+      "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js",
+      "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js",
+      "https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"
+    ], "XLSX");
     var babelOk = await loadFirst([
       "https://unpkg.com/@babel/standalone@7.23.5/babel.min.js",
       "https://cdn.jsdelivr.net/npm/@babel/standalone@7.23.5/babel.min.js",
@@ -127,7 +132,7 @@
   });
 </script>
 <script type="text/plain" id="appcode">
-const APP_VERSION="v2.1.0";  // bump on every release; shown in header + account menu
+const APP_VERSION="v2.2.0";  // bump on every release; shown in header + account menu
 const {useState,useEffect,useMemo,useRef} = React;
 const HAS_CHARTS = (typeof Recharts!=="undefined") && Recharts && Recharts.ResponsiveContainer;
 const ChartStub = ()=> <div style={{height:"100%",minHeight:120,display:"flex",alignItems:"center",justifyContent:"center",color:"var(--txt3)",fontSize:13,textAlign:"center",padding:20}}>Chart library didn't load — reload to retry. All other features work.</div>;
@@ -319,6 +324,87 @@ function rowsToTxns(rows){
   return{txns,skipped};
 }
 
+/* ============================================================
+   PORTFOLIO (Groww holdings statements)
+   Handles both Groww exports:
+   - Stocks:  "Stock Name | ISIN | Quantity | Average buy price | Buy value
+               | Closing price | Closing value | Unrealised P&L"
+   - Mutual funds: "Scheme Name | AMC | Category | Sub-category | Folio No.
+               | Source | Units | Invested Value | Current Value | Returns | XIRR"
+   Each import is a full snapshot: it REPLACES the stocks (or funds)
+   section and appends a point to the history trend.
+   ============================================================ */
+const EMPTY_PORTFOLIO={stocks:[],funds:[],stocksAsOf:null,fundsAsOf:null,history:[]};
+
+function sanitizePortfolio(p){
+  if(!p||typeof p!=="object")return{...EMPTY_PORTFOLIO};
+  return{stocks:Array.isArray(p.stocks)?p.stocks:[],funds:Array.isArray(p.funds)?p.funds:[],
+    stocksAsOf:p.stocksAsOf||null,fundsAsOf:p.fundsAsOf||null,
+    history:Array.isArray(p.history)?p.history:[]};
+}
+
+function parseHoldingsRows(rows){
+  if(!Array.isArray(rows)||!rows.length)return null;
+  // "as on" date appears in a preamble row in both formats
+  let asOf=null;
+  for(const r of rows.slice(0,30)){
+    const line=(r||[]).map(c=>c==null?"":String(c)).join(" ");
+    let m=line.match(/as on (\d{2}-\d{2}-\d{4})/i);
+    if(m){asOf=`${m[1].slice(6,10)}-${m[1].slice(3,5)}-${m[1].slice(0,2)}`;break;}
+    m=line.match(/as on (\d{4}-\d{2}-\d{2})/i);
+    if(m){asOf=m[1];break;}
+  }
+  const low=r=>(r||[]).map(c=>String(c==null?"":c).toLowerCase().trim());
+
+  const si=rows.findIndex(r=>{const l=low(r);return l.includes("stock name")&&l.includes("isin");});
+  if(si>=0){
+    const h=low(rows[si]); const col=n=>h.findIndex(c=>c.includes(n));
+    const ci={name:col("stock name"),isin:col("isin"),qty:col("quantity"),avg:col("average buy"),
+      buyVal:col("buy value"),ltp:col("closing price"),curVal:col("closing value"),pnl:col("unrealised")};
+    const out=[];
+    rows.slice(si+1).forEach(r=>{
+      if(!r||r[ci.name]==null||String(r[ci.name]).trim()==="")return;
+      const qty=num(r[ci.qty]); if(isNaN(qty)||qty===0)return;
+      out.push({name:titleCase(String(r[ci.name]).trim()),isin:String(r[ci.isin]||"").trim(),qty,
+        avg:num(r[ci.avg])||0,buyValue:num(r[ci.buyVal])||0,ltp:num(r[ci.ltp])||0,
+        curValue:num(r[ci.curVal])||0,pnl:num(r[ci.pnl])||0});
+    });
+    if(out.length)return{kind:"stocks",rows:out,asOf};
+  }
+
+  const fi=rows.findIndex(r=>{const l=low(r);return l.some(c=>c.includes("scheme name"))&&l.includes("units");});
+  if(fi>=0){
+    const h=low(rows[fi]); const col=n=>h.findIndex(c=>c.includes(n));
+    const ci={name:col("scheme name"),amc:col("amc"),cat:col("category"),sub:col("sub-category"),
+      folio:col("folio"),units:col("units"),inv:col("invested"),cur:col("current"),ret:col("returns"),xirr:col("xirr")};
+    const out=[];
+    rows.slice(fi+1).forEach(r=>{
+      if(!r||r[ci.name]==null||String(r[ci.name]).trim()==="")return;
+      const units=num(r[ci.units]); if(isNaN(units)||units===0)return;
+      out.push({name:String(r[ci.name]).trim(),amc:String(r[ci.amc]||"").trim(),
+        category:String(r[ci.cat]||"").trim(),subCategory:String(r[ci.sub]||"").trim(),
+        folio:String(r[ci.folio]||"").trim(),units,invested:num(r[ci.inv])||0,
+        current:num(r[ci.cur])||0,returns:num(r[ci.ret])||0,xirr:String(r[ci.xirr]||"").trim()});
+    });
+    if(out.length)return{kind:"funds",rows:out,asOf};
+  }
+  return null;
+}
+
+function mergePortfolio(prev,parsed){
+  const p={...EMPTY_PORTFOLIO,...sanitizePortfolio(prev)};
+  const asOf=parsed.asOf||new Date().toISOString().slice(0,10);
+  if(parsed.kind==="stocks"){p.stocks=parsed.rows;p.stocksAsOf=asOf;}
+  else{p.funds=parsed.rows;p.fundsAsOf=asOf;}
+  const invested=parsed.rows.reduce((a,r)=>a+(parsed.kind==="stocks"?r.buyValue:r.invested),0);
+  const current=parsed.rows.reduce((a,r)=>a+(parsed.kind==="stocks"?r.curValue:r.current),0);
+  p.history=p.history.filter(x=>!(x.type===parsed.kind&&x.date===asOf));
+  p.history.push({type:parsed.kind,date:asOf,invested:Math.round(invested),current:Math.round(current)});
+  p.history.sort((a,b)=>a.date.localeCompare(b.date));
+  if(p.history.length>104)p.history=p.history.slice(-104);
+  return p;
+}
+
 /* ---------------- storage (localStorage, retains years) ---------------- */
 /* ============================================================
    CONFIG — paste your Supabase project values here.
@@ -346,16 +432,27 @@ const LS={
    txns jsonb, income jsonb, budgets jsonb, updated_at). Simple and
    atomic for a personal app — the whole blob is saved together.    */
 const Cloud = {
+  // Set false automatically when the `portfolio` column doesn't exist yet
+  // (older Supabase setups) — the app keeps working, portfolio stays local.
+  portfolioCol:true,
   async load(userId){
-    const {data,error}=await sb.from("paisa_data").select("txns,income,budgets").eq("user_id",userId).maybeSingle();
-    if(error) throw error;
-    return data;
+    let res=await sb.from("paisa_data").select("txns,income,budgets,portfolio").eq("user_id",userId).maybeSingle();
+    if(res.error && /portfolio/i.test(res.error.message||"")){
+      Cloud.portfolioCol=false;
+      res=await sb.from("paisa_data").select("txns,income,budgets").eq("user_id",userId).maybeSingle();
+    }
+    if(res.error) throw res.error;
+    return res.data;
   },
   async save(userId, payload){
-    const {error}=await sb.from("paisa_data").upsert({
-      user_id:userId, txns:payload.txns, income:payload.income, budgets:payload.budgets,
-      updated_at:new Date().toISOString()
-    },{onConflict:"user_id"});
+    const row={user_id:userId, txns:payload.txns, income:payload.income, budgets:payload.budgets,
+      updated_at:new Date().toISOString()};
+    if(Cloud.portfolioCol) row.portfolio=payload.portfolio||EMPTY_PORTFOLIO;
+    let {error}=await sb.from("paisa_data").upsert(row,{onConflict:"user_id"});
+    if(error && /portfolio/i.test(error.message||"")){
+      Cloud.portfolioCol=false; delete row.portfolio;
+      ({error}=await sb.from("paisa_data").upsert(row,{onConflict:"user_id"}));
+    }
     if(error) throw error;
   }
 };
@@ -669,6 +766,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
   const [txns,setTxns]=useState(initial.txns);
   const [income,setIncome]=useState(initial.income);
   const [budgets,setBudgets]=useState(initial.budgets);
+  const [portfolio,setPortfolio]=useState(sanitizePortfolio(initial.portfolio));
   const [activeMonth,setActiveMonth]=useState(null);
   const [tab,setTab]=useState("insights");
   const [toast,setToast]=useState(null);
@@ -678,10 +776,11 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
     setActiveMonth(ms[ms.length-1]||new Date().toISOString().slice(0,7));
   },[]);
 
-  const pTxns=n=>{setTxns(n);persist({txns:n,income,budgets});};
-  const pTxnsNow=n=>{setTxns(n);persist({txns:n,income,budgets},true);};
-  const pInc=n=>{setIncome(n);persist({txns,income:n,budgets});};
-  const pBud=n=>{setBudgets(n);persist({txns,income,budgets:n});};
+  const pTxns=n=>{setTxns(n);persist({txns:n,income,budgets,portfolio});};
+  const pTxnsNow=n=>{setTxns(n);persist({txns:n,income,budgets,portfolio},true);};
+  const pInc=n=>{setIncome(n);persist({txns,income:n,budgets,portfolio});};
+  const pBud=n=>{setBudgets(n);persist({txns,income,budgets:n,portfolio});};
+  const pPort=n=>{setPortfolio(n);persist({txns,income,budgets,portfolio:n},true);};
   const flash=m=>{setToast(m);setTimeout(()=>setToast(null),2200);};
 
   const months=useMemo(()=>[...new Set(txns.map(x=>monthKey(x.date)))].sort(),[txns]);
@@ -707,8 +806,8 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           txns={txns} flash={flash} user={user} onSignOut={onSignOut} cloud={cloud} setTab={setTab}/>
         <div style={{maxWidth:980,margin:"0 auto",padding:"0 16px"}}>
           <nav className="tabs-nav" style={{display:"flex",gap:22,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>
-            {[["insights","✦ Insights"],["overview","Overview"],["transactions","Transactions"],["subscriptions","Subscriptions"],
-              ["budgets","Budgets"],["goals","🎯 Goals"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
+            {[["insights","✦ Insights"],["overview","Overview"],["transactions","Transactions"],["portfolio","📈 Portfolio"],
+              ["subscriptions","Subscriptions"],["budgets","Budgets"],["goals","🎯 Goals"],["trends","Trends"],["import","Import"]].map(([k,l])=>(
               <button key={k} className={"tabBtn"+(tab===k?" on":"")} onClick={()=>setTab(k)}>{l}</button>
             ))}
           </nav>
@@ -718,6 +817,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           {tab==="overview"&&<Overview stats={stats} label={monthLabel(activeMonth)} income={income}
             activeMonth={activeMonth} pInc={pInc} flash={flash}/>}
           {tab==="transactions"&&<Transactions txns={monthTxns} all={txns} pTxns={pTxns} flash={flash} monthLabel={monthLabel(activeMonth)}/>}
+          {tab==="portfolio"&&<Portfolio portfolio={portfolio} pPort={pPort} flash={flash} user={user}/>}
           {tab==="subscriptions"&&<Subscriptions all={txns}/>}
           {tab==="budgets"&&<Budgets budgets={budgets} pBud={pBud} byCat={stats.byCat} flash={flash}/>}
           {tab==="goals"&&<Goals txns={txns} fin={fin} income={income} budgets={budgets} pBud={pBud} flash={flash}/>}
@@ -1387,6 +1487,329 @@ function PasteBox({onParse}){
   );
 }
 
+/* ---------------- Portfolio (Groww stocks + mutual funds) ---------------- */
+const PIE_COLORS=["#00E0C7","#34E29B","#4DA8FF","#FFC34D","#FF8A4C","#FF5C8A","#56CCF2","#C49A6C","#FF77A9","#8794B8","#2ECFA0","#E0B84D"];
+const pnlColor=v=>v>0?"#34E29B":v<0?"#FF5C8A":"var(--txt2)";
+const signedINR=v=>(v>=0?"+":"−")+INR(Math.abs(v));
+const pctStr=(part,base)=>base>0?((part/base*100)>=0?"+":"")+ (part/base*100).toFixed(1)+"%":"—";
+
+function PortfolioImport({onParsed,compact}){
+  const fileRef=useRef(); const [err,setErr]=useState("");
+  const onFile=async e=>{
+    const f=e.target.files&&e.target.files[0]; if(!f)return; setErr("");
+    try{
+      let sheets=[];
+      if(/\.(xlsx|xls)$/i.test(f.name)){
+        if(typeof XLSX==="undefined"){setErr("The Excel reader didn't load — reload the page and try again.");e.target.value="";return;}
+        const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});
+        sheets=wb.SheetNames.map(n=>XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,raw:true,defval:null}));
+      }else{
+        sheets=[parseCSV(await f.text())];
+      }
+      let found=null;
+      for(const rows of sheets){const r=parseHoldingsRows(rows); if(r){found=r;break;}}
+      if(!found){setErr("Couldn't recognize this file. Expected a Groww holdings statement — stocks (Stock Name/ISIN/Quantity…) or mutual funds (Scheme Name/Units…).");}
+      else onParsed(found);
+    }catch(ex){setErr("Couldn't read the file: "+ex.message);}
+    e.target.value="";
+  };
+  return (
+    <div>
+      <div className="drop" onClick={()=>fileRef.current.click()} style={compact?{padding:"16px"}:null}>
+        <input ref={fileRef} type="file" accept=".xlsx,.xls,.csv,.tsv" onChange={onFile} style={{display:"none"}}/>
+        <div style={{fontSize:compact?24:36}}>📊</div>
+        <div style={{fontWeight:700,marginTop:6}}>Tap to import a Groww holdings statement</div>
+        <div style={{fontSize:12,color:"var(--txt3)"}}>.xlsx straight from Groww (Reports → Holdings) — stocks and mutual funds both work</div>
+      </div>
+      {err&&<div style={{marginTop:12,padding:"11px 15px",background:"rgba(255,92,138,.12)",color:"#FF8AAE",borderRadius:12,fontSize:13}}>{err}</div>}
+    </div>
+  );
+}
+
+/* tiny markdown renderer for AI insight text (headings, bullets, **bold**) */
+function MiniMarkdown({text}){
+  const fmt=s=>{const parts=String(s).split(/\*\*(.+?)\*\*/g);
+    return parts.map((x,i)=>i%2?<b key={i} style={{color:"var(--txt)"}}>{x}</b>:x);};
+  return (
+    <div style={{fontSize:13.5,lineHeight:1.7,color:"var(--txt2)"}}>
+      {String(text||"").split(/\r?\n/).map((l,i)=>{
+        if(/^#{1,3}\s/.test(l))return <div key={i} style={{fontFamily:"Sora",fontWeight:700,fontSize:15,color:"var(--txt)",margin:"14px 0 4px"}}>{l.replace(/^#+\s*/,"")}</div>;
+        if(/^\s*[-•*]\s/.test(l))return <div key={i} style={{display:"flex",gap:8,margin:"3px 0"}}><span style={{color:"var(--accent2)"}}>•</span><span>{fmt(l.replace(/^\s*[-•*]\s/,""))}</span></div>;
+        if(l.trim()==="")return <div key={i} style={{height:8}}/>;
+        return <div key={i}>{fmt(l)}</div>;
+      })}
+    </div>
+  );
+}
+
+function AIInsightPanel({user}){
+  const [state,setState]=useState({loading:true,row:null});
+  useEffect(()=>{
+    let alive=true;
+    if(!sb||!user){setState({loading:false,row:null});return;}
+    sb.from("paisa_insights").select("content,created_at").order("created_at",{ascending:false}).limit(1)
+      .then(({data,error})=>{if(alive)setState({loading:false,row:(!error&&data&&data[0])?data[0]:null});})
+      .catch(()=>{if(alive)setState({loading:false,row:null});});
+    return ()=>{alive=false;};
+  },[user]);
+  return (
+    <div className="glass" style={{padding:22,marginBottom:16,border:"1px solid rgba(0,224,199,.25)",
+      background:"linear-gradient(135deg,rgba(0,179,134,.10),rgba(77,168,255,.05))"}}>
+      <h3 style={{...ti,display:"flex",alignItems:"center",gap:8}}>🤖 AI portfolio analysis
+        {state.row&&<span style={{fontSize:10,fontWeight:600,color:"var(--txt3)",border:"1px solid var(--line2)",borderRadius:20,padding:"2px 8px"}}>
+          {new Date(state.row.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</span>}
+      </h3>
+      {state.loading?<div style={{fontSize:13,color:"var(--txt3)"}}>Checking for your latest analysis…</div>:
+       state.row?<MiniMarkdown text={state.row.content}/>:
+       <div style={{fontSize:13,color:"var(--txt2)",lineHeight:1.7}}>
+         No AI analysis yet. Once the weekly insights function is set up (see the <b>AI insights</b> section of the README —
+         a Supabase Edge Function that reads your holdings, pulls live prices &amp; news, and asks Claude for a
+         fundamentals-grounded review), your weekly report will appear here automatically.
+       </div>}
+    </div>
+  );
+}
+
+function Portfolio({portfolio,pPort,flash,user}){
+  const p=sanitizePortfolio(portfolio);
+  const hasData=p.stocks.length>0||p.funds.length>0;
+  const onParsed=parsed=>{
+    pPort(mergePortfolio(p,parsed));
+    flash(`Imported ${parsed.rows.length} ${parsed.kind==="stocks"?"stock":"mutual fund"} holdings${parsed.asOf?` (as on ${parsed.asOf})`:""}`);
+  };
+
+  const sInv=p.stocks.reduce((a,r)=>a+r.buyValue,0), sCur=p.stocks.reduce((a,r)=>a+r.curValue,0);
+  const fInv=p.funds.reduce((a,r)=>a+r.invested,0), fCur=p.funds.reduce((a,r)=>a+r.current,0);
+  const inv=sInv+fInv, cur=sCur+fCur, pnl=cur-inv;
+
+  // funds aggregated by scheme (Groww lists one row per folio)
+  const fundAgg=useMemo(()=>{
+    const g={};
+    p.funds.forEach(f=>{const k=f.name;
+      if(!g[k])g[k]={name:f.name,category:f.category,subCategory:f.subCategory,invested:0,current:0,folios:0};
+      g[k].invested+=f.invested; g[k].current+=f.current; g[k].folios++;});
+    return Object.values(g).sort((a,b)=>b.current-a.current);
+  },[p.funds]);
+
+  const stockPie=useMemo(()=>{
+    const s=[...p.stocks].sort((a,b)=>b.curValue-a.curValue);
+    const top=s.slice(0,8).map(r=>({name:r.name,value:Math.round(r.curValue)}));
+    const rest=s.slice(8).reduce((a,r)=>a+r.curValue,0);
+    if(rest>0)top.push({name:"Others",value:Math.round(rest)});
+    return top;
+  },[p.stocks]);
+
+  const catPie=useMemo(()=>{
+    const g={};
+    p.funds.forEach(f=>{const k=f.category||"Other"; g[k]=(g[k]||0)+f.current;});
+    if(sCur>0)g["Direct stocks"]=(g["Direct stocks"]||0)+sCur;
+    return Object.entries(g).map(([name,value])=>({name,value:Math.round(value)})).sort((a,b)=>b.value-a.value);
+  },[p.funds,sCur]);
+
+  const movers=useMemo(()=>{
+    const rows=p.stocks.filter(r=>r.buyValue>0).map(r=>({name:r.name,pct:r.pnl/r.buyValue*100,pnl:r.pnl}));
+    rows.sort((a,b)=>b.pct-a.pct);
+    return{best:rows[0],worst:rows[rows.length-1]};
+  },[p.stocks]);
+  const concentration=useMemo(()=>{
+    if(!p.stocks.length||sCur<=0)return null;
+    const top=[...p.stocks].sort((a,b)=>b.curValue-a.curValue)[0];
+    return{name:top.name,share:top.curValue/sCur*100};
+  },[p.stocks,sCur]);
+
+  const sortedStocks=[...p.stocks].sort((a,b)=>b.curValue-a.curValue);
+
+  if(!hasData)return (
+    <div className="fade">
+      <div className="glass" style={{padding:40,textAlign:"center",marginBottom:16}}>
+        <div style={{fontSize:42}}>📈</div>
+        <h3 style={{fontFamily:"Sora",marginTop:10}}>Bring in your investments</h3>
+        <p style={{color:"var(--txt2)",fontSize:14,maxWidth:520,margin:"6px auto 0",lineHeight:1.6}}>
+          Export your holdings from Groww (<b>Profile → Reports → Stocks / Mutual funds holdings</b>) and drop the
+          .xlsx here — no conversion needed. Stocks and mutual funds are tracked separately and merged into one view.
+        </p>
+      </div>
+      <div className="glass" style={{padding:22}}><PortfolioImport onParsed={onParsed}/></div>
+    </div>
+  );
+
+  return (
+    <div className="fade">
+      <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
+        <Hero label="Portfolio value" value={INR(cur)} accent="#00B386" icon="📈"
+          sub={`${signedINR(pnl)} (${pctStr(pnl,inv)}) on ${INR(inv)} invested`}/>
+        <Stat label="Stocks" value={INR(sCur)} accent="#4DA8FF" icon="◧"
+          sub={p.stocks.length?`${p.stocks.length} holdings · ${signedINR(sCur-sInv)}${p.stocksAsOf?` · as on ${p.stocksAsOf.slice(8)}/${p.stocksAsOf.slice(5,7)}`:""}`:"not imported yet"}/>
+        <Stat label="Mutual funds" value={INR(fCur)} accent="#FFC34D" icon="◨"
+          sub={p.funds.length?`${fundAgg.length} schemes · ${signedINR(fCur-fInv)}${p.fundsAsOf?` · as on ${p.fundsAsOf.slice(8)}/${p.fundsAsOf.slice(5,7)}`:""}`:"not imported yet"}/>
+        <Stat label="Unrealised P&L" value={signedINR(pnl)} accent={pnl>=0?"#34E29B":"#FF5C8A"} icon={pnl>=0?"▲":"▼"}
+          sub={`${pctStr(pnl,inv)} overall`}/>
+      </div>
+
+      {user&&!Cloud.portfolioCol&&(
+        <div style={{padding:"11px 15px",background:"rgba(255,195,77,.12)",color:"#FFC34D",borderRadius:12,fontSize:13,marginBottom:16}}>
+          Portfolio is saved on this device only — add the <b>portfolio</b> column to your Supabase table
+          (one line of SQL in the README) to sync it across devices.
+        </div>
+      )}
+
+      <AIInsightPanel user={user}/>
+
+      {(movers.best||concentration)&&(
+        <div className="insight-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14,marginBottom:16}}>
+          {movers.best&&movers.best.pnl>0&&(
+            <div className="glass" style={{padding:16,border:"1px solid rgba(52,226,155,.3)",background:"rgba(52,226,155,.08)"}}>
+              <div style={{fontSize:12,color:"var(--txt3)"}}>🏆 Best performer</div>
+              <div style={{fontWeight:700,marginTop:3}}>{movers.best.name}</div>
+              <div style={{fontFamily:"Space Grotesk",fontWeight:700,color:"#34E29B"}}>+{movers.best.pct.toFixed(1)}% · {signedINR(movers.best.pnl)}</div>
+            </div>)}
+          {movers.worst&&movers.worst.pnl<0&&(
+            <div className="glass" style={{padding:16,border:"1px solid rgba(255,92,138,.3)",background:"rgba(255,92,138,.08)"}}>
+              <div style={{fontSize:12,color:"var(--txt3)"}}>🩹 Biggest drag</div>
+              <div style={{fontWeight:700,marginTop:3}}>{movers.worst.name}</div>
+              <div style={{fontFamily:"Space Grotesk",fontWeight:700,color:"#FF5C8A"}}>{movers.worst.pct.toFixed(1)}% · {signedINR(movers.worst.pnl)}</div>
+            </div>)}
+          {concentration&&concentration.share>15&&(
+            <div className="glass" style={{padding:16,border:"1px solid rgba(255,195,77,.3)",background:"rgba(255,195,77,.08)"}}>
+              <div style={{fontSize:12,color:"var(--txt3)"}}>⚖️ Concentration</div>
+              <div style={{fontWeight:700,marginTop:3}}>{concentration.name}</div>
+              <div style={{fontFamily:"Space Grotesk",fontWeight:700,color:"#FFC34D"}}>{concentration.share.toFixed(0)}% of your stock portfolio</div>
+            </div>)}
+        </div>
+      )}
+
+      {catPie.length>0&&(
+        <div className="ov-charts" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(300px,1fr))",gap:16,marginBottom:16}}>
+          <div className="glass" style={{padding:22}}>
+            <h3 style={ti}>Asset allocation</h3>
+            <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:10}}>
+              <div style={{width:190,height:190,flexShrink:0}}>
+                <RC.ResponsiveContainer>
+                  <RC.PieChart>
+                    <RC.Pie data={catPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={54} outerRadius={86} paddingAngle={2} stroke="none">
+                      {catPie.map((d,i)=><RC.Cell key={d.name} fill={PIE_COLORS[i%PIE_COLORS.length]}/>)}
+                    </RC.Pie>
+                    <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
+                  </RC.PieChart>
+                </RC.ResponsiveContainer>
+              </div>
+              <div style={{flex:1,minWidth:170}}>
+                {catPie.map((d,i)=>(
+                  <div key={d.name} style={{display:"flex",alignItems:"center",gap:9,padding:"5px 0",borderBottom:"1px solid var(--line)"}}>
+                    <span style={{width:10,height:10,borderRadius:3,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
+                    <span style={{flex:1,fontSize:13,color:"var(--txt2)"}}>{d.name}</span>
+                    <span style={{fontSize:13,fontWeight:700,fontFamily:"Space Grotesk"}}>{INR(d.value)}</span>
+                    <span style={{fontSize:11,color:"var(--txt3)",width:36,textAlign:"right"}}>{cur>0?Math.round(d.value/cur*100):0}%</span>
+                  </div>))}
+              </div>
+            </div>
+          </div>
+          {stockPie.length>0&&(
+            <div className="glass" style={{padding:22}}>
+              <h3 style={ti}>Stock allocation</h3>
+              <div style={{display:"flex",flexWrap:"wrap",alignItems:"center",gap:10}}>
+                <div style={{width:190,height:190,flexShrink:0}}>
+                  <RC.ResponsiveContainer>
+                    <RC.PieChart>
+                      <RC.Pie data={stockPie} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={54} outerRadius={86} paddingAngle={2} stroke="none">
+                        {stockPie.map((d,i)=><RC.Cell key={d.name} fill={PIE_COLORS[(i+3)%PIE_COLORS.length]}/>)}
+                      </RC.Pie>
+                      <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
+                    </RC.PieChart>
+                  </RC.ResponsiveContainer>
+                </div>
+                <div style={{flex:1,minWidth:170}}>
+                  {stockPie.map((d,i)=>(
+                    <div key={d.name} style={{display:"flex",alignItems:"center",gap:9,padding:"5px 0",borderBottom:"1px solid var(--line)"}}>
+                      <span style={{width:10,height:10,borderRadius:3,background:PIE_COLORS[(i+3)%PIE_COLORS.length],flexShrink:0}}/>
+                      <span style={{flex:1,fontSize:12.5,color:"var(--txt2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</span>
+                      <span style={{fontSize:12.5,fontWeight:700,fontFamily:"Space Grotesk"}}>{INR(d.value)}</span>
+                    </div>))}
+                </div>
+              </div>
+            </div>)}
+        </div>
+      )}
+
+      {sortedStocks.length>0&&(
+        <div className="glass" style={{padding:22,marginBottom:16}}>
+          <h3 style={ti}>Stocks · {p.stocks.length} holdings{p.stocksAsOf?` · as on ${p.stocksAsOf}`:""}</h3>
+          <div style={{overflowX:"auto"}}>
+            <div style={{minWidth:560}}>
+              <div style={{display:"grid",gridTemplateColumns:"minmax(160px,2fr) 60px 90px 100px 100px 110px",gap:8,padding:"6px 0",
+                fontSize:10.5,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6,borderBottom:"1px solid var(--line2)"}}>
+                <span>Stock</span><span style={{textAlign:"right"}}>Qty</span><span style={{textAlign:"right"}}>Avg</span>
+                <span style={{textAlign:"right"}}>LTP</span><span style={{textAlign:"right"}}>Value</span><span style={{textAlign:"right"}}>P&L</span>
+              </div>
+              {sortedStocks.map(r=>(
+                <div key={r.isin||r.name} style={{display:"grid",gridTemplateColumns:"minmax(160px,2fr) 60px 90px 100px 100px 110px",gap:8,
+                  padding:"10px 0",borderBottom:"1px solid var(--line)",alignItems:"center"}}>
+                  <div>
+                    <div style={{fontSize:13.5,fontWeight:600}}>{r.name}</div>
+                    <div style={{fontSize:11,color:"var(--txt3)"}}>{INR(r.buyValue)} invested</div>
+                  </div>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk"}}>{r.qty}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk"}}>{INR2(r.avg)}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk"}}>{INR2(r.ltp)}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontWeight:700,fontFamily:"Space Grotesk"}}>{INR(r.curValue)}</span>
+                  <span style={{textAlign:"right",fontSize:12.5,fontWeight:700,fontFamily:"Space Grotesk",color:pnlColor(r.pnl)}}>
+                    {signedINR(r.pnl)}<div style={{fontSize:10.5,fontWeight:600}}>{pctStr(r.pnl,r.buyValue)}</div>
+                  </span>
+                </div>))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {fundAgg.length>0&&(
+        <div className="glass" style={{padding:22,marginBottom:16}}>
+          <h3 style={ti}>Mutual funds · {fundAgg.length} schemes{p.fundsAsOf?` · as on ${p.fundsAsOf}`:""}</h3>
+          {fundAgg.map((f,i)=>{const gain=f.current-f.invested; return (
+            <div key={f.name} className="row" style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:"1px solid var(--line)"}}>
+              <span style={{width:4,height:40,borderRadius:4,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
+              <div style={{flex:1,minWidth:0}}>
+                <div style={{fontSize:13.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.name}</div>
+                <div style={{fontSize:11.5,color:"var(--txt3)"}}>{f.category}{f.subCategory?` · ${f.subCategory}`:""}{f.folios>1?` · ${f.folios} folios`:""}</div>
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk"}}>{INR(f.current)}</div>
+                <div style={{fontSize:11.5,fontWeight:600,color:pnlColor(gain)}}>{signedINR(gain)} ({pctStr(gain,f.invested)})</div>
+              </div>
+            </div>);})}
+        </div>
+      )}
+
+      {p.history.length>1&&(
+        <div className="glass" style={{padding:22,marginBottom:16}}>
+          <h3 style={ti}>Portfolio over time</h3>
+          <p style={{fontSize:12,color:"var(--txt3)",margin:"0 0 12px"}}>One point per imported statement — keep importing weekly to grow the trend.</p>
+          <div className="chart-box" style={{height:220}}>
+            <RC.ResponsiveContainer>
+              <RC.LineChart data={p.history.map(h=>({...h,label:`${h.date.slice(8)}/${h.date.slice(5,7)}`}))}>
+                <RC.CartesianGrid strokeDasharray="3 3" stroke="#222B45" vertical={false}/>
+                <RC.XAxis dataKey="label" tick={{fontSize:11,fill:"#9AA7C7"}}/>
+                <RC.YAxis tickFormatter={v=>"₹"+Math.round(v/1000)+"k"} tick={{fontSize:11,fill:"#5E6B91"}}/>
+                <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
+                <RC.Line dataKey="current" name="Value" stroke="#00E0C7" strokeWidth={3} dot={{r:4,fill:"#00E0C7"}}/>
+                <RC.Line dataKey="invested" name="Invested" stroke="#8794B8" strokeWidth={2} strokeDasharray="5 4" dot={{r:3,fill:"#8794B8"}}/>
+              </RC.LineChart>
+            </RC.ResponsiveContainer>
+          </div>
+        </div>
+      )}
+
+      <div className="glass" style={{padding:22}}>
+        <h3 style={ti}>Update holdings</h3>
+        <p style={{fontSize:12.5,color:"var(--txt3)",margin:"0 0 14px",lineHeight:1.6}}>
+          Import a fresh statement anytime — it replaces the matching section (stocks or funds) with the new snapshot
+          and adds a point to the trend above.
+        </p>
+        <PortfolioImport onParsed={onParsed} compact/>
+      </div>
+    </div>
+  );
+}
+
 /* ---------------- bits ---------------- */
 function Empty({msg}){return <div style={{padding:"30px 16px",textAlign:"center",color:"var(--txt3)",fontSize:13.5,lineHeight:1.6}}>{msg}</div>;}
 const ti={margin:"0 0 16px",fontFamily:"Sora",fontSize:16,fontWeight:700,letterSpacing:-.2};
@@ -1400,7 +1823,8 @@ const SEED=[];
 const DEFAULTS={
   txns:SEED,
   income:{},  // no preset salary; user sets it via Overview → Income → Set
-  budgets:{"Food & Dining":8000,"Groceries & Quick-commerce":3000,"Shopping":5000,"Subscriptions":2000,"Travel & Transport":4000}
+  budgets:{"Food & Dining":8000,"Groceries & Quick-commerce":3000,"Shopping":5000,"Subscriptions":2000,"Travel & Transport":4000},
+  portfolio:EMPTY_PORTFOLIO
 };
 function sanitizeTxns(arr){
   if(!Array.isArray(arr)) return [];
@@ -1415,12 +1839,14 @@ function loadLocal(userId){
   return {
     txns:sanitizeTxns(LS.get(ns+"txns",null)||(userId?[]:DEFAULTS.txns)),
     income:LS.get(ns+"income",null)||(userId?{}:DEFAULTS.income),
-    budgets:LS.get(ns+"budgets",null)||DEFAULTS.budgets
+    budgets:LS.get(ns+"budgets",null)||DEFAULTS.budgets,
+    portfolio:sanitizePortfolio(LS.get(ns+"portfolio",null))
   };
 }
 function saveLocal(userId,d){
   const ns = userId ? ("u_"+userId+"_") : "anon_";
   LS.set(ns+"txns",d.txns); LS.set(ns+"income",d.income); LS.set(ns+"budgets",d.budgets);
+  LS.set(ns+"portfolio",sanitizePortfolio(d.portfolio));
 }
 
 // One-time: remove legacy shared cache keys from the buggy version so an
@@ -1464,14 +1890,15 @@ function App(){
       if(!remote){
         // Brand-new account: start EMPTY. Never inherit another user's
         // device cache. (Migration is an explicit opt-in action elsewhere.)
-        const fresh={txns:[],income:{},budgets:DEFAULTS.budgets};
+        const fresh={txns:[],income:{},budgets:DEFAULTS.budgets,portfolio:EMPTY_PORTFOLIO};
         await Cloud.save(u.id, fresh);
         remote=fresh;
       }
       const d={
         txns:sanitizeTxns(remote.txns||[]),
         income:remote.income||{},
-        budgets:remote.budgets||DEFAULTS.budgets
+        budgets:remote.budgets||DEFAULTS.budgets,
+        portfolio:sanitizePortfolio(remote.portfolio)
       };
       setData(d); saveLocal(u.id,d); setCloud("synced"); setPhase("ready");
     }catch(e){

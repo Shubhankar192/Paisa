@@ -1,6 +1,6 @@
-# Paisa — Expense Tracker (with accounts + cloud sync)
+# Paisa — Personal Finance Manager (expenses + investments + AI insights)
 
-A single-file expense tracker with **email/password + Google login** and **cross-device sync** via Supabase (free tier). Upload bank-statement CSVs, auto-categorize, track subscriptions, budgets and trends. Your data lives in your own Supabase project, gated behind your login, isolated per-account by Row-Level Security.
+A single-file personal finance app with **email/password + Google login** and **cross-device sync** via Supabase (free tier). Upload bank-statement CSVs, auto-categorize, track subscriptions, budgets and trends — and import your **Groww stocks & mutual-fund holdings** for a full portfolio view with optional **weekly AI-powered analysis**. Your data lives in your own Supabase project, gated behind your login, isolated per-account by Row-Level Security.
 
 Until you add Supabase keys, the app runs in **local-only mode** (data stays in that browser) so it still works out of the box.
 
@@ -79,3 +79,90 @@ Data lives only in your Supabase project, behind your login, isolated per-user b
 
 ## CSV format
 Date + Description/Narration + Amount (or Withdrawal/Deposit columns). HDFC CSV export works as-is.
+
+---
+
+## Portfolio (Groww stocks + mutual funds)
+
+The **📈 Portfolio** tab imports Groww holdings statements directly — no conversion needed:
+
+- **Stocks**: Groww → Profile → Reports → *Stocks holdings statement* (.xlsx)
+- **Mutual funds**: Groww → Profile → Reports → *Mutual funds holdings statement* (.xlsx)
+
+Drop either file in; the app detects which one it is, shows current value / unrealised P&L per holding, asset-allocation charts, best & worst performers, concentration warnings, and a value-over-time trend (one point per imported statement — import weekly to build the trend).
+
+### Enable cloud sync for the portfolio (one line of SQL)
+
+If you set up `paisa_data` before v2.2.0, add the new column in the Supabase **SQL Editor**:
+
+```sql
+alter table paisa_data add column if not exists portfolio jsonb default '{}';
+```
+
+Without it the portfolio still works, but stays on the device you imported it on.
+
+---
+
+## AI portfolio insights (weekly, powered by Claude)
+
+Optional: a Supabase **Edge Function** (`supabase/functions/weekly-portfolio-insights`) that runs weekly, reads your holdings, pulls **live prices** (Yahoo Finance) and **recent news** (Google News) for each stock, and asks **Claude** for a fundamentals-grounded review — portfolio health, holding-level notes tied to real news, watch items, and rebalancing considerations. The latest report appears at the top of the Portfolio tab.
+
+### 1. Create the insights table
+
+SQL Editor → run:
+
+```sql
+create table if not exists paisa_insights (
+  id bigint generated always as identity primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  content text not null,
+  created_at timestamptz default now()
+);
+
+alter table paisa_insights enable row level security;
+
+create policy "own insights - select" on paisa_insights
+  for select using (auth.uid() = user_id);
+-- no insert/update policies: only the edge function (service role) writes
+```
+
+### 2. Deploy the function
+
+Requires the [Supabase CLI](https://supabase.com/docs/guides/cli) and an [Anthropic API key](https://platform.claude.com/):
+
+```bash
+supabase login
+supabase link --project-ref <your-project-ref>
+supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
+supabase secrets set CRON_SECRET=<any-long-random-string>
+supabase functions deploy weekly-portfolio-insights --no-verify-jwt
+```
+
+### 3. Schedule it weekly
+
+SQL Editor → run (enables pg_cron + pg_net and schedules Sunday 7 AM IST):
+
+```sql
+create extension if not exists pg_cron;
+create extension if not exists pg_net;
+
+select cron.schedule(
+  'weekly-portfolio-insights',
+  '30 1 * * 0',  -- 01:30 UTC = 07:00 IST every Sunday
+  $$
+  select net.http_post(
+    url := 'https://<your-project-ref>.supabase.co/functions/v1/weekly-portfolio-insights',
+    headers := jsonb_build_object('x-cron-secret', '<same-CRON_SECRET-as-above>')
+  );
+  $$
+);
+```
+
+To test immediately without waiting for Sunday:
+
+```bash
+curl -X POST "https://<your-project-ref>.supabase.co/functions/v1/weekly-portfolio-insights" \
+  -H "x-cron-secret: <your-CRON_SECRET>"
+```
+
+**Cost**: one weekly Claude call per user analyzing a typical portfolio costs a few rupees a month. Yahoo Finance and Google News lookups are free and best-effort — if either is unreachable, the analysis still runs from your statement data.
