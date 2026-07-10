@@ -276,8 +276,12 @@ function mergePortfolio(prev,parsed){
    Both are PUBLIC keys, safe to commit. Row-Level Security
    (set up via the SQL in the README) is what protects data.
    ============================================================ */
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "https://oqwgndpsaxieumninxzy.supabase.co";
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xd2duZHBzYXhpZXVtbmlueHp5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIyMjY1NTAsImV4cCI6MjA5NzgwMjU1MH0.iB12wfLpVB4A3MvtJm9_3J0LfS4u9_tMtmBbNOF6HXk";
+// Supplied at build time (GitHub Actions secrets → VITE_* env vars; locally
+// via a .env file). Note: the anon key is still PUBLIC by design — it ships
+// in the built JS either way. RLS is what protects the data; keeping it out
+// of the repo is hygiene, not secrecy.
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? "";
+const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY ?? "";
 const SUPABASE_READY = SUPABASE_URL.indexOf("http")===0 && SUPABASE_ANON_KEY.length>20;
 
 let sb = null;
