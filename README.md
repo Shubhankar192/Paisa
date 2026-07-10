@@ -50,9 +50,16 @@ This guarantees each account can only ever read or write its own row -- even tho
 - Add the same under **Redirect URLs**.
 - (For local testing also add `http://localhost:8000`.)
 
-### 5. Paste your keys into the app
-In Supabase: **Project Settings -> API**. Copy the **Project URL** and the **anon public** key (safe to expose -- RLS protects the data).
-Open `src/lib.js`, near the top find the `SUPABASE_URL` / `SUPABASE_ANON_KEY` constants and replace the default strings with your values (or set `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` env vars at build time).
+### 5. Give the app your keys (as GitHub secrets — nothing in the code)
+In Supabase: **Project Settings -> API**. Copy the **Project URL** and the **anon public** key.
+Then in GitHub: repo **Settings -> Secrets and variables -> Actions -> New repository secret**, add:
+
+| Secret name | Value |
+|---|---|
+| `VITE_SUPABASE_URL` | `https://<project-ref>.supabase.co` |
+| `VITE_SUPABASE_ANON_KEY` | the anon public key |
+
+The deploy workflow injects them at build time — no keys live in the source. (Note: the anon key still ships inside the built JS, which is by design and safe; Row-Level Security is what protects the data. Keeping it out of the repo is hygiene, not secrecy.) For local development, copy `.env.example` to `.env` and fill in the same two values. Without keys the app runs in local-only mode.
 
 ### 6. Push to GitHub
 Push to `main`. GitHub Actions builds the app and deploys it to Pages automatically (see **Development & deployment** below). Open `https://<your-username>.github.io/Paisa/` -- you'll get a login screen. Create an account or use Google, and you're synced across iPad, phone and laptop.
