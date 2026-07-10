@@ -1,6 +1,6 @@
 # Paisa — Personal Finance Manager (expenses + investments + AI insights)
 
-A single-file personal finance app with **email/password + Google login** and **cross-device sync** via Supabase (free tier). Upload bank-statement CSVs, auto-categorize, track subscriptions, budgets and trends — and import your **Groww stocks & mutual-fund holdings** for a full portfolio view with optional **weekly AI-powered analysis**. Your data lives in your own Supabase project, gated behind your login, isolated per-account by Row-Level Security.
+A React + Vite personal finance app with **email/password + Google login** and **cross-device sync** via Supabase (free tier), built and deployed automatically by GitHub Actions. Upload bank-statement CSVs, auto-categorize, track subscriptions, budgets and trends — and import your **Groww stocks & mutual-fund holdings** for a full portfolio view with optional **weekly AI-powered analysis**. Your data lives in your own Supabase project, gated behind your login, isolated per-account by Row-Level Security.
 
 Until you add Supabase keys, the app runs in **local-only mode** (data stays in that browser) so it still works out of the box.
 
@@ -52,17 +52,10 @@ This guarantees each account can only ever read or write its own row -- even tho
 
 ### 5. Paste your keys into the app
 In Supabase: **Project Settings -> API**. Copy the **Project URL** and the **anon public** key (safe to expose -- RLS protects the data).
-Open `index.html`, near the top of the app script find:
-
-```js
-const SUPABASE_URL = "YOUR_SUPABASE_URL_HERE";
-const SUPABASE_ANON_KEY = "YOUR_SUPABASE_ANON_KEY_HERE";
-```
-
-Replace the two strings with your values.
+Open `src/lib.js`, near the top find the `SUPABASE_URL` / `SUPABASE_ANON_KEY` constants and replace the default strings with your values (or set `VITE_SUPABASE_URL` / `VITE_SUPABASE_ANON_KEY` env vars at build time).
 
 ### 6. Push to GitHub
-Commit `index.html` (and `.nojekyll`) to the repo root, push. Open `https://<your-username>.github.io/Paisa/` -- you'll get a login screen. Create an account or use Google, and you're synced across iPad, phone and laptop.
+Push to `main`. GitHub Actions builds the app and deploys it to Pages automatically (see **Development & deployment** below). Open `https://<your-username>.github.io/Paisa/` -- you'll get a login screen. Create an account or use Google, and you're synced across iPad, phone and laptop.
 
 ---
 
@@ -71,8 +64,21 @@ Commit `index.html` (and `.nojekyll`) to the repo root, push. Open `https://<you
 - After that, every change saves locally instantly and pushes to the cloud within a second. The account menu (top-right avatar) shows **Synced / Syncing / Offline**.
 - localStorage is kept as an offline cache, so the app still opens if the network is flaky.
 
-## Deploy basics (GitHub Pages)
-Repo -> **Settings -> Pages** -> Source: **Deploy from a branch** -> `main` / root -> Save.
+## Development & deployment
+
+The app is a standard **Vite + React** project:
+
+```bash
+npm install     # once
+npm run dev     # local dev server with hot reload
+npm run build   # production build into dist/
+```
+
+**Deployment is fully automated.** Every push to `main` triggers `.github/workflows/deploy.yml`, which runs `npm ci && npm run build` on GitHub's servers and publishes `dist/` to GitHub Pages — no local build needed, so you can work entirely from an iPad.
+
+**One-time setting**: Repo -> **Settings -> Pages** -> Source: **GitHub Actions** (instead of "Deploy from a branch"). Without this the new builds won't go live.
+
+Code layout: `src/lib.js` (pure logic — parsing, categorization, portfolio, storage, Supabase), `src/App.jsx` (all React components), `src/main.jsx` (entry), `src/styles.css` (design system), `supabase/functions/` (edge functions, deployed separately via the Supabase CLI).
 
 ## Privacy
 Data lives only in your Supabase project, behind your login, isolated per-user by Row-Level Security. The anon key is meant to be public; it cannot bypass those rules. Use a strong, unique password -- this is bank-derived data.

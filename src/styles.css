@@ -1,0 +1,129 @@
+  :root{
+    /* refined fintech-dark palette: slate surfaces, emerald primary */
+    --bg:#0A0D13; --bg2:#0D1119; --panel:#131824; --panel2:#1A2130;
+    --line:#1E2634; --line2:#2A3446;
+    --txt:#F2F5FA; --txt2:#9AA6BB; --txt3:#5F6B7E;
+    --accent:#10B981; --accent2:#2DD4A7; --gold:#F5B84D;
+    --pink:#F4506E; --green:#31C48D; --orange:#F97949; --blue:#4D9FFF;
+    --card-shadow:0 1px 2px rgba(0,0,0,.35), 0 8px 24px -12px rgba(0,0,0,.5);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0; background:var(--bg); color:var(--txt);
+    font-family:'Inter',-apple-system,system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
+  #root{min-height:100vh;}
+  /* financial numbers align like a ledger */
+  body{font-feature-settings:"tnum" 1, "lnum" 1;}
+  ::-webkit-scrollbar{width:9px; height:9px;}
+  ::-webkit-scrollbar-thumb{background:var(--line2); border-radius:8px;}
+  ::-webkit-scrollbar-track{background:transparent;}
+  input,select,textarea,button{font-family:inherit;}
+  select option{background:#131824; color:#F2F5FA;}
+  input:focus,select:focus,textarea:focus{outline:2px solid rgba(16,185,129,.4); border-color:var(--accent);}
+  @keyframes fade{from{opacity:0; transform:translateY(8px);}to{opacity:1; transform:none;}}
+  @keyframes pop{from{opacity:0; transform:scale(.97);}to{opacity:1; transform:scale(1);}}
+  @keyframes slideUp{from{transform:translate(-50%,20px); opacity:0;}to{transform:translate(-50%,0); opacity:1;}}
+  @keyframes shimmer{0%{background-position:-400px 0;}100%{background-position:400px 0;}}
+  .fade{animation:fade .35s cubic-bezier(.2,.7,.3,1);}
+  .pop{animation:pop .25s ease;}
+
+  /* aurora decoration retired in the fintech redesign — surfaces stay calm */
+  .aurora{display:none;}
+
+  /* cards: solid, elevated, crisp — no glass blur */
+  .glass{background:var(--panel);
+    border:1px solid var(--line); border-radius:16px;
+    box-shadow:var(--card-shadow);}
+
+  .chip{border:none; border-radius:10px; padding:10px 18px; font-size:14px; font-weight:600; cursor:pointer; transition:transform .12s, filter .2s, background .2s;}
+  .chip:active{transform:scale(.96);}
+  .chip:hover{filter:brightness(1.08);}
+  .primary{background:var(--accent); color:#06251B; font-weight:700;}
+  .primary:hover{background:var(--accent2); filter:none;}
+  .ghost{background:var(--panel2); color:var(--txt2); border:1px solid var(--line);}
+  .ghost:hover{background:var(--line); color:var(--txt); filter:none;}
+
+  /* segmented pill navigation */
+  .tabs-nav{border-bottom:none !important; padding:10px 0 12px; gap:6px !important;}
+  .tabBtn{position:relative; border:1px solid transparent; background:none; cursor:pointer;
+    padding:8px 14px; border-radius:999px; font-size:13.5px; font-weight:600;
+    color:var(--txt3); transition:color .15s, background .15s; white-space:nowrap;}
+  .tabBtn:hover{color:var(--txt2); background:var(--panel);}
+  .tabBtn.on{color:var(--txt); background:var(--panel2); border-color:var(--line2);}
+  .tabBtn.on::after{content:none;}
+
+  .row{transition:background .15s;}
+  .row:hover{background:rgba(255,255,255,.02);}
+  .icoBtn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line); background:var(--panel);
+    color:var(--txt2); font-size:20px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:.2s;}
+  .icoBtn:hover:not(:disabled){background:var(--panel2); color:var(--txt);}
+  .icoBtn:disabled{opacity:.3; cursor:not-allowed;}
+  .inp{background:var(--bg2); border:1px solid var(--line); color:var(--txt);
+    border-radius:10px; padding:11px 14px; font-size:14px; width:100%;}
+  .inp::placeholder{color:var(--txt3);}
+  .miniSel{background:var(--bg2); border:1px solid var(--line); border-radius:8px;
+    padding:5px 7px; font-size:11px; font-weight:700; cursor:pointer;}
+  .del{width:28px;height:28px;border-radius:8px;border:none;background:none;color:var(--txt3);font-size:20px;cursor:pointer; transition:.15s;}
+  .del:hover{color:var(--pink); background:rgba(244,80,110,.12);}
+  .drop{border:1.5px dashed var(--line2); border-radius:14px; padding:34px 18px; text-align:center; cursor:pointer; transition:.25s; background:var(--bg2);}
+  .drop:hover{border-color:var(--accent); background:rgba(16,185,129,.05);}
+
+  /* brand mark: rounded ₹ badge + wordmark */
+  .brand{display:flex; align-items:center; gap:10px;}
+  .brand-badge{width:34px; height:34px; border-radius:10px; flex-shrink:0;
+    background:linear-gradient(150deg,#10B981,#0A8F66);
+    display:flex; align-items:center; justify-content:center;
+    color:#fff; font-weight:800; font-size:19px; font-family:'Sora',sans-serif;
+    box-shadow:0 2px 8px rgba(16,185,129,.35);}
+  .brand-word{font-family:'Sora',sans-serif; font-weight:800; font-size:21px; letter-spacing:-.5px; color:var(--txt); line-height:1;}
+
+  @media (prefers-reduced-motion: reduce){*{animation:none !important; transition:none !important;}}
+  /* ---------------- Responsive / mobile ---------------- */
+  /* Tablets and below */
+  @media (max-width: 720px){
+    .glass{border-radius:14px;}
+    .app-main{padding:14px 12px 70px !important;}
+    .app-header{padding:12px 12px !important;}
+    /* charts and chart rows stack */
+    .ov-charts{grid-template-columns:1fr !important;}
+  }
+  /* Phones */
+  @media (max-width: 540px){
+    :root{font-size:15px;}
+    .app-header{flex-wrap:wrap; gap:10px !important;}
+    .brand-tag{display:none;}              /* hide subtitle on phones */
+    .header-actions{width:100%; justify-content:space-between;}
+    .chip{padding:9px 14px;}
+    .tabs-nav{gap:5px !important;}
+    .tabBtn{padding:7px 12px; font-size:13px;}
+    /* stat grids: 2 columns max on phones */
+    .stat-grid{grid-template-columns:1fr 1fr !important; gap:10px !important;}
+    .hero-card{flex-direction:column; text-align:center; gap:14px !important;}
+    /* budget rows: stack label over bar, input full width below */
+    .budget-row{grid-template-columns:1fr !important; gap:7px !important;}
+    .budget-row .budget-input{width:100% !important;}
+    /* transaction rows: tighten, let category select drop to its own line */
+    .txn-amt{width:auto !important; min-width:84px;}
+    .txn-cat{max-width:108px;}
+    /* income editor + add form: single column */
+    .form-grid{grid-template-columns:1fr !important;}
+    /* insight cards: single column */
+    .insight-grid{grid-template-columns:1fr !important;}
+    /* balance band wraps cleanly */
+    .balance-band{gap:14px !important;}
+    /* map/charts keep height sensible */
+    .chart-box{height:240px !important;}
+  }
+  /* Very small phones */
+  @media (max-width: 380px){
+    .stat-grid{grid-template-columns:1fr !important;}
+  }
+
+  /* ---------------- Device polish ---------------- */
+  body{padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom);}
+  .app-header{position:sticky; top:0; z-index:40;
+    background:rgba(10,13,19,.9); border-bottom:1px solid var(--line);
+    backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);}
+  .tabs-nav{position:sticky; top:0; z-index:39; background:rgba(10,13,19,.88);
+    backdrop-filter:blur(10px); -webkit-backdrop-filter:blur(10px);}
+  button, select, .chip, .icoBtn{touch-action:manipulation;}  /* kill 300ms tap delay */
+  .txnRowWrap{overscroll-behavior:contain;}
