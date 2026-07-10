@@ -270,6 +270,129 @@ function mergePortfolio(prev,parsed){
   return p;
 }
 
+
+/* ============================================================
+   DECISION INSIGHTS — rule-based, computed entirely on-device
+   from the user's own holdings. No backend, no API keys, works
+   offline. Every card cites the user's actual numbers; phrased
+   as considerations, never instructions.
+   ============================================================ */
+function computeDecisionInsights(port){
+  const p=sanitizePortfolio(port);
+  const out=[];
+  const sCur=p.stocks.reduce((a,r)=>a+r.curValue,0);
+  const fCur=p.funds.reduce((a,r)=>a+r.current,0);
+  const total=sCur+fCur;
+  if(total<=0)return out;
+  const pct=(x,base)=>base>0?x/base*100:0;
+
+  // single-stock concentration
+  if(p.stocks.length>=3){
+    const top=[...p.stocks].sort((a,b)=>b.curValue-a.curValue)[0];
+    const share=pct(top.curValue,sCur);
+    if(share>=20)out.push({id:"conc",tone:"warn",icon:"⚖️",title:`${top.name} is ${Math.round(share)}% of your stocks`,
+      body:`If it fell 30%, that's ${INR(top.curValue*0.3)} gone from one name. A common guardrail is capping single stocks near 10–15% — trimming toward that and moving the excess to a broad index fund reduces single-company risk without leaving the market.`});
+  }
+
+  // deep losers → thesis check + loss harvesting
+  p.stocks.filter(r=>r.buyValue>0&&r.pnl/r.buyValue<=-0.20).forEach(r=>{
+    out.push({id:"loss-"+(r.isin||r.name),tone:"bad",icon:"🩹",title:`${r.name} is down ${Math.round(-r.pnl/r.buyValue*100)}%`,
+      body:`The honest question: would you buy it fresh today at ₹${r.ltp}? If the reason you bought broke, exiting frees ${INR(r.curValue)} for better ideas — and the booked loss can offset capital-gains tax (loss harvesting). If the thesis is intact, fine — but avoid averaging down just to fix the average.`});
+  });
+
+  // strong winners → rebalancing consideration
+  p.stocks.filter(r=>r.buyValue>0&&r.pnl/r.buyValue>=0.40).forEach(r=>{
+    out.push({id:"win-"+(r.isin||r.name),tone:"good",icon:"🏆",title:`${r.name} is up ${Math.round(r.pnl/r.buyValue*100)}%`,
+      body:`${INR(r.pnl)} of gain is still on paper. Selling a slice back to your original position size locks some profit while staying invested — winners that ran often become the concentration risk of next year.`});
+  });
+
+  // dust positions
+  const dust=p.stocks.filter(r=>r.curValue>0&&r.curValue<sCur*0.02);
+  if(dust.length>=2){
+    out.push({id:"dust",tone:"neutral",icon:"🧹",title:`${dust.length} positions are under 2% each`,
+      body:`${dust.map(d=>d.name).join(", ")} add up to just ${INR(dust.reduce((a,d)=>a+d.curValue,0))}. Even a double in any of them barely moves your portfolio — consider consolidating into your highest-conviction holdings or your index fund.`});
+  }
+
+  // equity vs debt buffer
+  const debtish=p.funds.filter(f=>/debt|arbitrage|liquid|overnight|money market|gilt/i.test(f.category+" "+f.subCategory)).reduce((a,f)=>a+f.current,0);
+  const equityShare=pct(total-debtish,total);
+  if(equityShare>=90){
+    out.push({id:"alloc",tone:"warn",icon:"🛟",title:`${Math.round(equityShare)}% of this portfolio is equity`,
+      body:`Only ${INR(debtish)} sits in debt/arbitrage. A normal 30% equity drawdown would show as ${INR((total-debtish)*0.3)} of red — survivable only if none of this money is needed within ~3 years. If some is, building the FD/debt side first is the boring, correct move.`});
+  }
+
+  // small-cap tilt
+  const smallCap=p.funds.filter(f=>/small/i.test(f.subCategory)).reduce((a,f)=>a+f.current,0);
+  const scShare=pct(smallCap,fCur);
+  if(fCur>0&&scShare>=35){
+    out.push({id:"smallcap",tone:"warn",icon:"🎢",title:`${Math.round(scShare)}% of your MF money is in small-caps`,
+      body:`Small-caps have delivered the best long-run returns and the worst crashes (50%+ drawdowns happen). This tilt is great with a 7+ year horizon and strong nerves; if not, pointing new SIPs at flexi-cap/index funds rebalances gradually without selling.`});
+  }
+
+  // duplicate funds in the same sub-category
+  const bySub={};
+  p.funds.forEach(f=>{const k=(f.subCategory||"other").toLowerCase(); (bySub[k]=bySub[k]||new Set()).add(f.name);});
+  Object.entries(bySub).filter(([,names])=>names.size>=2).forEach(([k,names])=>{
+    out.push({id:"dupe-"+k,tone:"neutral",icon:"👯",title:`${names.size} funds in the same category (${titleCase(k)})`,
+      body:`${[...names].join(" and ")} very likely hold overlapping stocks — two funds in one category isn't double diversification, it's double paperwork. One well-chosen fund per category is usually enough.`});
+  });
+
+  // sector cluster: banks
+  const banks=p.stocks.filter(r=>/bank/i.test(r.name));
+  const bankVal=banks.reduce((a,r)=>a+r.curValue,0);
+  if(banks.length>=2&&pct(bankVal,sCur)>=25){
+    out.push({id:"banks",tone:"neutral",icon:"🏦",title:`Banking is ${Math.round(pct(bankVal,sCur))}% of your stocks`,
+      body:`${banks.map(b=>b.name).join(", ")} all ride the same rate cycle and credit environment — they tend to fall together. Worth knowing that your "diversified" stock list has a sector bet inside it.`});
+  }
+
+  // index core check
+  const hasIndex=p.funds.some(f=>/index|nifty|sensex/i.test(f.name));
+  if(fCur>0&&!hasIndex){
+    out.push({id:"index",tone:"neutral",icon:"🧱",title:"No index fund in the portfolio",
+      body:`Most active funds trail their index over 10 years after fees. A low-cost Nifty 50 / Nifty 500 index fund as the core, with your active picks around it, keeps costs down and removes fund-manager risk from the base.`});
+  }
+
+  const rank={bad:0,warn:1,good:2,neutral:3};
+  return out.sort((a,b)=>rank[a.tone]-rank[b.tone]);
+}
+
+/* ============================================================
+   LIVE MF NAVs via api.mfapi.in — free, keyless, CORS-open,
+   updated daily from AMFI. Best-effort: any failure just means
+   we keep showing statement values.
+   ============================================================ */
+const navNorm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+async function fetchLiveNAVs(funds){
+  const names=[...new Set((funds||[]).map(f=>f.name))];
+  const out={};
+  await Promise.all(names.map(async name=>{
+    try{
+      const q=navNorm(name).split(" ").slice(0,4).join(" ");
+      const res=await fetch("https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
+      if(!res.ok)return;
+      const list=await res.json();
+      if(!Array.isArray(list))return;
+      const tokens=navNorm(name).split(" ").filter(t=>t.length>1);
+      let best=null,bestScore=0;
+      for(const c of list){
+        const cn=navNorm(c.schemeName);
+        let score=tokens.filter(t=>cn.includes(t)).length/Math.max(tokens.length,1);
+        if(/direct/.test(navNorm(name))!==/direct/.test(cn))score-=0.5;
+        if(/idcw|dividend|bonus/.test(cn))score-=0.4;
+        if(score>bestScore){bestScore=score;best=c;}
+      }
+      if(!best||bestScore<0.75)return;
+      const nres=await fetch("https://api.mfapi.in/mf/"+best.schemeCode+"/latest");
+      if(!nres.ok)return;
+      const nj=await nres.json();
+      const nav=parseFloat(nj&&nj.data&&nj.data[0]&&nj.data[0].nav);
+      if(!isFinite(nav)||nav<=0)return;
+      out[name]={nav,date:nj.data[0].date,matched:best.schemeName};
+    }catch(e){/* best-effort */}
+  }));
+  return out;
+}
+
 /* ---------------- storage (localStorage, retains years) ---------------- */
 /* ============================================================
    CONFIG — paste your Supabase project values here.
@@ -380,4 +503,5 @@ export {
   EMPTY_PORTFOLIO, sanitizePortfolio, parseHoldingsRows, mergePortfolio,
   SUPABASE_URL, SUPABASE_READY, sb, LS, Cloud,
   SEED, DEFAULTS, sanitizeTxns, loadLocal, saveLocal,
+  computeDecisionInsights, fetchLiveNAVs,
 };

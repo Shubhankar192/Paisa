@@ -7,6 +7,7 @@ import {
   parseCSV, rowsToTxns,
   EMPTY_PORTFOLIO, sanitizePortfolio, parseHoldingsRows, mergePortfolio,
   SUPABASE_READY, sb, Cloud, DEFAULTS, sanitizeTxns, loadLocal, saveLocal,
+  computeDecisionInsights, fetchLiveNAVs,
 } from "./lib.js";
 
 /* ---------------- Auth screen ---------------- */
@@ -1177,6 +1178,28 @@ function Portfolio({portfolio,pPort,flash,user}){
 
   const sortedStocks=[...p.stocks].sort((a,b)=>b.curValue-a.curValue);
 
+  // on-device decision insights — no backend needed
+  const decisions=useMemo(()=>computeDecisionInsights(p),[portfolio]);
+
+  // live NAV refresh (api.mfapi.in, best-effort)
+  const [live,setLive]=useState(null);
+  const [liveBusy,setLiveBusy]=useState(false);
+  const unitsBy=useMemo(()=>{
+    const u={}; p.funds.forEach(f=>{u[f.name]=(u[f.name]||0)+f.units;}); return u;
+  },[p.funds]);
+  const refreshNAVs=async()=>{
+    if(liveBusy)return; setLiveBusy(true);
+    try{
+      const navs=await fetchLiveNAVs(p.funds);
+      const matched=Object.keys(navs).length;
+      if(matched===0){flash("Couldn't fetch live NAVs — showing statement values");}
+      else{setLive(navs);flash(`Live NAVs loaded for ${matched} of ${fundAgg.length} schemes`);}
+    }catch(e){flash("Couldn't fetch live NAVs — showing statement values");}
+    setLiveBusy(false);
+  };
+  const liveValueOf=name=>live&&live[name]?live[name].nav*(unitsBy[name]||0):null;
+  const liveFCur=live?fundAgg.reduce((a,f)=>a+(liveValueOf(f.name)??f.current),0):null;
+
   if(!hasData)return (
     <div className="fade">
       <div className="glass" style={{padding:40,textAlign:"center",marginBottom:16}}>
@@ -1198,8 +1221,8 @@ function Portfolio({portfolio,pPort,flash,user}){
           sub={`${signedINR(pnl)} (${pctStr(pnl,inv)}) on ${INR(inv)} invested`}/>
         <Stat label="Stocks" value={INR(sCur)} accent="#4D9FFF" icon="◧"
           sub={p.stocks.length?`${p.stocks.length} holdings · ${signedINR(sCur-sInv)}${p.stocksAsOf?` · as on ${p.stocksAsOf.slice(8)}/${p.stocksAsOf.slice(5,7)}`:""}`:"not imported yet"}/>
-        <Stat label="Mutual funds" value={INR(fCur)} accent="#F5B84D" icon="◨"
-          sub={p.funds.length?`${fundAgg.length} schemes · ${signedINR(fCur-fInv)}${p.fundsAsOf?` · as on ${p.fundsAsOf.slice(8)}/${p.fundsAsOf.slice(5,7)}`:""}`:"not imported yet"}/>
+        <Stat label="Mutual funds" value={INR(liveFCur??fCur)} accent="#F5B84D" icon="◨"
+          sub={p.funds.length?`${fundAgg.length} schemes · ${signedINR((liveFCur??fCur)-fInv)}${liveFCur!=null?" · live NAV":(p.fundsAsOf?` · as on ${p.fundsAsOf.slice(8)}/${p.fundsAsOf.slice(5,7)}`:"")}`:"not imported yet"}/>
         <Stat label="Unrealised P&L" value={signedINR(pnl)} accent={pnl>=0?"#31C48D":"#F4506E"} icon={pnl>=0?"▲":"▼"}
           sub={`${pctStr(pnl,inv)} overall`}/>
       </div>
@@ -1212,6 +1235,28 @@ function Portfolio({portfolio,pPort,flash,user}){
       )}
 
       <AIInsightPanel user={user}/>
+
+      {decisions.length>0&&(
+        <div className="glass" style={{padding:22,marginBottom:16}}>
+          <h3 style={{...ti,marginBottom:6}}>Decision insights</h3>
+          <p style={{fontSize:12.5,color:"var(--txt3)",margin:"0 0 14px",lineHeight:1.6}}>
+            Computed on your device from your actual holdings — nothing leaves the browser. Considerations, not instructions.
+          </p>
+          <div className="insight-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(280px,1fr))",gap:12}}>
+            {decisions.map(d=>{const t=TONE[d.tone]||TONE.neutral; return (
+              <div key={d.id} style={{padding:16,borderRadius:12,border:`1px solid ${t.bd}`,background:t.bg}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                  <span style={{fontSize:18}}>{d.icon}</span>
+                  <span style={{fontSize:13.5,fontWeight:700,color:t.c}}>{d.title}</span>
+                </div>
+                <p style={{fontSize:12.5,color:"var(--txt2)",lineHeight:1.6,margin:0}}>{d.body}</p>
+              </div>);})}
+          </div>
+          <div style={{fontSize:10.5,color:"var(--txt3)",marginTop:12}}>
+            Educational analysis of your own data — not SEBI-registered investment advice.
+          </div>
+        </div>
+      )}
 
       {(movers.best||concentration)&&(
         <div className="insight-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14,marginBottom:16}}>
@@ -1321,16 +1366,29 @@ function Portfolio({portfolio,pPort,flash,user}){
 
       {fundAgg.length>0&&(
         <div className="glass" style={{padding:22,marginBottom:16}}>
-          <h3 style={ti}>Mutual funds · {fundAgg.length} schemes{p.fundsAsOf?` · as on ${p.fundsAsOf}`:""}</h3>
-          {fundAgg.map((f,i)=>{const gain=f.current-f.invested; return (
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8,marginBottom:16}}>
+            <h3 style={{...ti,margin:0}}>Mutual funds · {fundAgg.length} schemes{p.fundsAsOf&&!live?` · as on ${p.fundsAsOf}`:""}</h3>
+            <button className="chip ghost" style={{padding:"7px 14px",fontSize:12.5,opacity:liveBusy?.6:1}} onClick={refreshNAVs} disabled={liveBusy}>
+              {liveBusy?"Fetching NAVs…":live?"↻ Refresh live NAV":"↻ Get live NAV"}
+            </button>
+          </div>
+          {fundAgg.map((f,i)=>{
+            const lv=liveValueOf(f.name);
+            const shown=lv??f.current;
+            const gain=shown-f.invested;
+            return (
             <div key={f.name} className="row" style={{display:"flex",alignItems:"center",gap:12,padding:"12px 0",borderBottom:"1px solid var(--line)"}}>
               <span style={{width:4,height:40,borderRadius:4,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
               <div style={{flex:1,minWidth:0}}>
                 <div style={{fontSize:13.5,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{f.name}</div>
-                <div style={{fontSize:11.5,color:"var(--txt3)"}}>{f.category}{f.subCategory?` · ${f.subCategory}`:""}{f.folios>1?` · ${f.folios} folios`:""}</div>
+                <div style={{fontSize:11.5,color:"var(--txt3)"}}>{f.category}{f.subCategory?` · ${f.subCategory}`:""}{f.folios>1?` · ${f.folios} folios`:""}
+                  {lv!=null&&<span style={{color:"var(--accent2)",fontWeight:700}}> · NAV ₹{live[f.name].nav} ({live[f.name].date})</span>}
+                </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(f.current)}</div>
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(shown)}
+                  {lv!=null&&<span style={{fontSize:9,fontWeight:800,color:"#06251B",background:"var(--accent2)",borderRadius:5,padding:"1.5px 5px",marginLeft:6,verticalAlign:"middle"}}>LIVE</span>}
+                </div>
                 <div style={{fontSize:11.5,fontWeight:600,color:pnlColor(gain)}}>{signedINR(gain)} ({pctStr(gain,f.invested)})</div>
               </div>
             </div>);})}
