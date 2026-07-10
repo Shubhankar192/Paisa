@@ -1,7 +1,7 @@
 // Paisa — pure logic & data layer (no React).
 import { createClient } from "@supabase/supabase-js";
 
-export const APP_VERSION = "v2.2.0";
+export const APP_VERSION = "v3.0.0";
 
 /* ---------------- helpers ---------------- */
 const INR=(n)=>"₹"+Math.round(n).toLocaleString("en-IN");
