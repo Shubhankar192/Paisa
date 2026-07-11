@@ -56,7 +56,7 @@ function Auth({onAuthed}){
           <div style={{fontSize:13,color:"var(--txt3)",marginTop:10}}>{mode==="signin"?"Welcome back":"Create your account"}</div>
         </div>
 
-        <button className="chip" onClick={google} style={{width:"100%",background:"#fff",color:"#0F1420",
+        <button className="chip" onClick={google} style={{width:"100%",background:"#fff",color:"#101828",border:"1px solid var(--line2)",
           display:"flex",alignItems:"center",justifyContent:"center",gap:10,marginBottom:14,padding:"12px"}}>
           <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9 3.6l6.7-6.7C35.6 2.4 30.2 0 24 0 14.6 0 6.4 5.4 2.5 13.3l7.8 6.1C12.2 13.6 17.6 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.5 3-2.2 5.5-4.7 7.2l7.3 5.7c4.3-3.9 6.8-9.7 6.8-17.4z"/><path fill="#FBBC05" d="M10.3 28.4c-.5-1.5-.8-3.1-.8-4.4s.3-3 .8-4.4l-7.8-6.1C.9 16.5 0 20.1 0 24s.9 7.5 2.5 10.6l7.8-6.2z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.3-5.7c-2 1.4-4.7 2.3-8.6 2.3-6.4 0-11.8-4.1-13.7-9.9l-7.8 6.2C6.4 42.6 14.6 48 24 48z"/></svg>
           Continue with Google
@@ -70,8 +70,8 @@ function Auth({onAuthed}){
         <input className="inp" type="password" placeholder="Password" value={pw} onChange={e=>setPw(e.target.value)}
           onKeyDown={e=>e.key==="Enter"&&submit()} style={{marginBottom:14}}/>
 
-        {err&&<div style={{padding:"10px 13px",background:"rgba(244,80,110,.12)",color:"#FF8AAE",borderRadius:10,fontSize:13,marginBottom:12}}>{err}</div>}
-        {msg&&<div style={{padding:"10px 13px",background:"rgba(49,196,141,.12)",color:"#31C48D",borderRadius:10,fontSize:13,marginBottom:12}}>{msg}</div>}
+        {err&&<div style={{padding:"10px 13px",background:"rgba(217,45,32,.12)",color:"#D92D20",borderRadius:10,fontSize:13,marginBottom:12}}>{err}</div>}
+        {msg&&<div style={{padding:"10px 13px",background:"rgba(7,148,85,.12)",color:"#079455",borderRadius:10,fontSize:13,marginBottom:12}}>{msg}</div>}
 
         <button className="chip primary" onClick={submit} disabled={busy} style={{width:"100%",padding:"12px",opacity:busy?.6:1}}>
           {busy?"Please wait…":(mode==="signin"?"Sign in":"Create account")}
@@ -209,16 +209,16 @@ function Sparkline({data,color}){
 
 function HealthRing({score}){
   const r=54,c=2*Math.PI*r,off=c-(score/100)*c;
-  const col=score>=70?"#31C48D":score>=45?"#F5B84D":"#F4506E";
+  const col=score>=70?"#079455":score>=45?"#DC6803":"#D92D20";
   return (
     <div style={{position:"relative",width:140,height:140,flexShrink:0}}>
       <svg width="140" height="140" style={{transform:"rotate(-90deg)"}}>
-        <circle cx="70" cy="70" r={r} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="11"/>
+        <circle cx="70" cy="70" r={r} fill="none" stroke="#EEF1F5" strokeWidth="11"/>
         <circle cx="70" cy="70" r={r} fill="none" stroke={col} strokeWidth="11" strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={off} style={{transition:"stroke-dashoffset 1s cubic-bezier(.2,.7,.3,1)"}}/>
       </svg>
       <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center"}}>
-        <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:38,fontWeight:700,color:col,lineHeight:1}}>{score}</div>
+        <div style={{fontFamily:"Inter, sans-serif",fontSize:38,fontWeight:700,color:col,lineHeight:1}}>{score}</div>
         <div style={{fontSize:10,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1}}>health</div>
       </div>
     </div>
@@ -242,10 +242,10 @@ function computeHealth(txns,fin,income){
   return{score,label};
 }
 
-const TONE={good:{bg:"rgba(49,196,141,.10)",bd:"rgba(49,196,141,.30)",c:"#31C48D"},
-  warn:{bg:"rgba(245,184,77,.10)",bd:"rgba(245,184,77,.30)",c:"#F5B84D"},
-  bad:{bg:"rgba(244,80,110,.10)",bd:"rgba(244,80,110,.30)",c:"#F4506E"},
-  neutral:{bg:"rgba(16,185,129,.08)",bd:"rgba(16,185,129,.22)",c:"#26C296"}};
+const TONE={good:{bg:"rgba(7,148,85,.10)",bd:"rgba(7,148,85,.30)",c:"#079455"},
+  warn:{bg:"rgba(220,104,3,.10)",bd:"rgba(220,104,3,.30)",c:"#DC6803"},
+  bad:{bg:"rgba(217,45,32,.10)",bd:"rgba(217,45,32,.30)",c:"#D92D20"},
+  neutral:{bg:"rgba(7,148,85,.08)",bd:"rgba(7,148,85,.22)",c:"#079455"}};
 
 function Insights({txns,fin,income,setTab}){
   const insights=useMemo(()=>computeInsights(txns,fin,income),[txns,fin,income]);
@@ -257,7 +257,7 @@ function Insights({txns,fin,income,setTab}){
   if(txns.length===0)return (
     <div className="glass fade" style={{padding:40,textAlign:"center"}}>
       <div style={{fontSize:42}}>✦</div>
-      <h3 style={{fontFamily:"Sora, Inter, sans-serif",marginTop:10}}>No insights yet</h3>
+      <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>No insights yet</h3>
       <p style={{color:"var(--txt2)",fontSize:14}}>Import a statement and your personalized financial intelligence appears here.</p>
       <button className="chip primary" style={{marginTop:8}} onClick={()=>setTab("import")}>↑ Import a statement</button>
     </div>
@@ -266,11 +266,11 @@ function Insights({txns,fin,income,setTab}){
   return (
     <div className="fade">
       <div className="glass hero-card" style={{padding:26,marginBottom:18,display:"flex",gap:26,alignItems:"center",flexWrap:"wrap",
-        background:"linear-gradient(135deg,rgba(16,185,129,.16),rgba(45,212,167,.07))",border:"1px solid rgba(16,185,129,.22)"}}>
+        background:"linear-gradient(135deg,rgba(7,148,85,.16),rgba(14,147,132,.07))",border:"1px solid rgba(7,148,85,.22)"}}>
         <HealthRing score={health.score}/>
         <div style={{flex:1,minWidth:200}}>
           <div style={{fontSize:12,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1.2}}>Financial health</div>
-          <div style={{fontFamily:"Sora, Inter, sans-serif",fontSize:30,fontWeight:800,letterSpacing:-.5,margin:"2px 0 6px"}}>{health.label}</div>
+          <div style={{fontFamily:"Inter, sans-serif",fontSize:30,fontWeight:800,letterSpacing:-.5,margin:"2px 0 6px"}}>{health.label}</div>
           <p style={{fontSize:13.5,color:"var(--txt2)",lineHeight:1.6,margin:0,maxWidth:460}}>
             A blend of your savings rate, spending consistency and balance growth. {months.length} month{months.length>1?"s":""} analyzed —
             every card below is computed from your real transactions.
@@ -282,7 +282,7 @@ function Insights({txns,fin,income,setTab}){
         <div className="glass" style={{padding:"16px 20px",marginBottom:18}}>
           <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.8,marginBottom:12}}>Spending intensity · last {heat.length} months</div>
           <div style={{display:"flex",gap:5,alignItems:"flex-end",height:64}}>
-            {heat.map(h=>{const pct=h.s/maxHeat;const col=pct>.8?"#F4506E":pct>.55?"#F97949":pct>.3?"#F5B84D":"#31C48D";
+            {heat.map(h=>{const pct=h.s/maxHeat;const col=pct>.8?"#D92D20":pct>.55?"#EF6820":pct>.3?"#DC6803":"#079455";
               return (
                 <div key={h.m} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5}}>
                   <div title={INR(h.s)} style={{width:"100%",height:`${Math.max(8,pct*48)}px`,borderRadius:5,
@@ -307,7 +307,7 @@ function Insights({txns,fin,income,setTab}){
                 {it.tier===1&&<span style={{fontSize:9,fontWeight:700,color:t.c,border:`1px solid ${t.bd}`,
                   borderRadius:20,padding:"2px 8px",textTransform:"uppercase",letterSpacing:.5}}>key</span>}
               </div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:26,fontWeight:700,color:t.c,margin:"10px 0 6px",letterSpacing:-.5}}>{it.value}</div>
+              <div style={{fontFamily:"Inter, sans-serif",fontSize:26,fontWeight:700,color:t.c,margin:"10px 0 6px",letterSpacing:-.5}}>{it.value}</div>
               <p style={{fontSize:13,color:"var(--txt2)",lineHeight:1.55,margin:0}}>{it.body}</p>
               {it.spark&&<div style={{marginTop:12}}><Sparkline data={it.spark} color={t.c}/></div>}
             </div>
@@ -381,8 +381,8 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
         </main>
       </div>
       {toast&&<div style={{position:"fixed",bottom:26,left:"50%",transform:"translateX(-50%)",
-        background:"linear-gradient(135deg,#10B981,#26C296)",color:"#fff",padding:"12px 22px",
-        borderRadius:14,fontSize:14,fontWeight:600,zIndex:100,boxShadow:"0 8px 30px rgba(16,185,129,.45)",
+        background:"#101828",color:"#fff",padding:"12px 22px",
+        borderRadius:10,fontSize:14,fontWeight:600,zIndex:100,boxShadow:"0 8px 24px rgba(16,24,40,.3)",
         animation:"slideUp .3s ease"}}>{toast}</div>}
     </div>
   );
@@ -425,14 +425,14 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
         </button>
         <button className="icoBtn" disabled={idx<=0} onClick={()=>go(-1)}>‹</button>
         <select className="inp" value={activeMonth} onChange={e=>setActiveMonth(e.target.value)}
-          style={{width:"auto",fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif",textAlign:"center",padding:"9px 12px"}}>
+          style={{width:"auto",fontWeight:700,fontFamily:"Inter, sans-serif",textAlign:"center",padding:"9px 12px"}}>
           {months.map(m=><option key={m} value={m}>{monthLabel(m)}</option>)}
         </select>
         <button className="icoBtn" disabled={idx>=months.length-1} onClick={()=>go(1)}>›</button>
         {user&&(
           <div style={{position:"relative"}}>
             <button className="icoBtn" onClick={()=>setMenu(!menu)} title={user.email}
-              style={{background:"linear-gradient(135deg,#10B981,#2DD4A7)",color:"#fff",fontWeight:700,border:"none"}}>
+              style={{background:"linear-gradient(135deg,#079455,#0E9384)",color:"#fff",fontWeight:700,border:"none"}}>
               {(user.email||"?")[0].toUpperCase()}
             </button>
             {menu&&(
@@ -440,7 +440,7 @@ function Header({months,activeMonth,setActiveMonth,txns,flash,user,onSignOut,clo
                 <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.5}}>Signed in as</div>
                 <div style={{fontSize:13,fontWeight:600,wordBreak:"break-all",marginTop:2}}>{user.email}</div>
                 <div style={{display:"flex",alignItems:"center",gap:6,margin:"10px 0",fontSize:12,
-                  color:cloud==="synced"?"#31C48D":cloud==="syncing"?"#F5B84D":"var(--txt3)"}}>
+                  color:cloud==="synced"?"#079455":cloud==="syncing"?"#DC6803":"var(--txt3)"}}>
                   <span style={{width:7,height:7,borderRadius:"50%",background:"currentColor"}}/>
                   {cloud==="synced"?"Synced to cloud":cloud==="syncing"?"Syncing…":cloud==="local"?"Local only":"Offline"}
                 </div>
@@ -474,20 +474,20 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
   return (
     <div className="fade">
       <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
-        <Hero label="Net flow this month" value={INR(net)} accent="#10B981" big
+        <Hero label="Net flow this month" value={INR(net)} accent="#079455" big
           sub={`Savings rate ${Math.round(rate)}%`} icon="◈"/>
-        <Stat label="Income" value={INR(inc)} accent="#10B981" icon="↗"
+        <Stat label="Income" value={INR(inc)} accent="#079455" icon="↗"
           sub={`${incomeSource}${otherCredits>0?` · +${INR(otherCredits)} other`:""}`}
           action={<button className="chip ghost" style={{padding:"5px 12px",fontSize:12}} onClick={()=>setEdit(!edit)}>{edit?"Close":"Set"}</button>}/>
-        <Stat label="Spending" value={INR(spend)} accent="#F97949" icon="↘"
+        <Stat label="Spending" value={INR(spend)} accent="#EF6820" icon="↘"
           sub={`${inc>0?Math.round((spend/inc)*100)+"% of income":""}${refunds>0?` · ${INR(refunds)} refunds netted`:""}`}/>
-        <Stat label="Invested + Saved" value={INR(invest+savings)} accent="#31C48D" icon="✦"
+        <Stat label="Invested + Saved" value={INR(invest+savings)} accent="#079455" icon="✦"
           sub={`MF ${INR(invest)} · FD/RD ${INR(savings)}`}/>
       </div>
 
       {edit&&(
-        <div className="glass pop" style={{padding:20,marginBottom:18,border:"1px solid rgba(16,185,129,.25)"}}>
-          <h3 style={{fontFamily:"Sora, Inter, sans-serif",fontSize:15,margin:"0 0 4px"}}>Set income</h3>
+        <div className="glass pop" style={{padding:20,marginBottom:18,border:"1px solid rgba(7,148,85,.25)"}}>
+          <h3 style={{fontFamily:"Inter, sans-serif",fontSize:15,margin:"0 0 4px"}}>Set income</h3>
           <p style={{fontSize:12.5,color:"var(--txt3)",margin:"0 0 16px",lineHeight:1.6}}>
             Priority: a month override beats your default salary, which beats auto-detected income. Set a default once and every month is covered.
           </p>
@@ -516,20 +516,20 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 
       {(typeof closing==="number")&&(
         <div className="glass balance-band" style={{padding:"16px 20px",marginBottom:18,display:"flex",alignItems:"center",
-          gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(45,212,167,.10),rgba(16,185,129,.05))"}}>
+          gap:24,flexWrap:"wrap",background:"linear-gradient(135deg,rgba(14,147,132,.10),rgba(7,148,85,.05))"}}>
           <div>
             <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Opening balance</div>
-            <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:22,fontWeight:700}}>{opening!=null?INR(opening):"—"}</div>
+            <div style={{fontFamily:"Inter, sans-serif",fontSize:22,fontWeight:700}}>{opening!=null?INR(opening):"—"}</div>
           </div>
           <div style={{fontSize:22,color:"var(--txt3)"}}>→</div>
           <div>
             <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Closing balance</div>
-            <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:22,fontWeight:700}}>{INR(closing)}</div>
+            <div style={{fontFamily:"Inter, sans-serif",fontSize:22,fontWeight:700}}>{INR(closing)}</div>
           </div>
           {balDelta!=null&&(
             <div style={{marginLeft:"auto",textAlign:"right"}}>
               <div style={{fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6}}>Net change</div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:22,fontWeight:700,color:balDelta>=0?"#31C48D":"#F4506E"}}>
+              <div style={{fontFamily:"Inter, sans-serif",fontSize:22,fontWeight:700,color:balDelta>=0?"#079455":"#D92D20"}}>
                 {balDelta>=0?"+":"−"}{INR(Math.abs(balDelta))}</div>
             </div>
           )}
@@ -553,7 +553,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
                 <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",
                   alignItems:"center",justifyContent:"center",pointerEvents:"none"}}>
                   <div style={{fontSize:11,color:"var(--txt3)"}}>total spent</div>
-                  <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:20,fontWeight:700}}>{INR(spend)}</div>
+                  <div style={{fontFamily:"Inter, sans-serif",fontSize:20,fontWeight:700}}>{INR(spend)}</div>
                 </div>
               </div>
               <div style={{flex:1,minWidth:190}}>
@@ -561,7 +561,7 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
                   <div key={d.name} style={{display:"flex",alignItems:"center",gap:9,padding:"6px 0",borderBottom:"1px solid var(--line)"}}>
                     <span style={{width:10,height:10,borderRadius:3,background:colorFor(d.name),flexShrink:0}}/>
                     <span style={{flex:1,fontSize:13,color:"var(--txt2)"}}>{d.name}</span>
-                    <span style={{fontSize:13,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(d.value)}</span>
+                    <span style={{fontSize:13,fontWeight:700,fontFamily:"Inter, sans-serif"}}>{INR(d.value)}</span>
                     <span style={{fontSize:11,color:"var(--txt3)",width:34,textAlign:"right"}}>{Math.round(d.value/spend*100)}%</span>
                   </div>
                 ))}
@@ -572,11 +572,11 @@ function Overview({stats,label,income,activeMonth,pInc,flash}){
 
         <div className="glass" style={{padding:22}}>
           <h3 style={ti}>Money flow</h3>
-          <Flow label="Income" value={inc} max={inc} color="#10B981"/>
-          <Flow label="Spending" value={spend} max={inc} color="#F97949"/>
-          <Flow label="Investments (MF/SIP)" value={invest} max={inc} color="#31C48D"/>
-          <Flow label="FD / RD" value={savings} max={inc} color="#2DD4A7"/>
-          <Flow label="Subscriptions" value={subs} max={inc} color="#F5B84D"/>
+          <Flow label="Income" value={inc} max={inc} color="#079455"/>
+          <Flow label="Spending" value={spend} max={inc} color="#EF6820"/>
+          <Flow label="Investments (MF/SIP)" value={invest} max={inc} color="#079455"/>
+          <Flow label="FD / RD" value={savings} max={inc} color="#0E9384"/>
+          <Flow label="Subscriptions" value={subs} max={inc} color="#DC6803"/>
           <Flow label="Credit-card bills" value={ccbill} max={inc} color="#E0B84D"/>
           <div style={{fontSize:11.5,color:"var(--txt3)",marginTop:14,lineHeight:1.6}}>
             Investments, FD/RD and card-bill payments are tracked apart from lifestyle spending — so "spending" reflects real consumption.
@@ -591,11 +591,11 @@ function Hero({label,value,sub,accent,icon}){
   return (
     <div style={{padding:"22px 24px",gridColumn:"1 / -1",borderRadius:16,
       background:"linear-gradient(130deg,#0E3B2E 0%,#11543F 45%,#0C2C36 100%)",
-      border:"1px solid rgba(45,212,167,.22)",position:"relative",overflow:"hidden",
+      border:"1px solid rgba(14,147,132,.22)",position:"relative",overflow:"hidden",
       boxShadow:"0 12px 32px -16px rgba(0,0,0,.6)"}}>
       <div style={{position:"absolute",inset:0,background:"radial-gradient(120% 140% at 85% -20%, rgba(255,255,255,.08), transparent 55%)",pointerEvents:"none"}}/>
       <div style={{fontSize:11.5,color:"rgba(242,245,250,.66)",fontWeight:600,textTransform:"uppercase",letterSpacing:1.2}}>{label}</div>
-      <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:40,fontWeight:700,letterSpacing:-1,marginTop:6,color:"#fff"}}>{value}</div>
+      <div style={{fontFamily:"Inter, sans-serif",fontSize:40,fontWeight:700,letterSpacing:-1,marginTop:6,color:"#fff"}}>{value}</div>
       <div style={{fontSize:13,color:"rgba(242,245,250,.72)",marginTop:4}}>{sub}</div>
     </div>
   );
@@ -607,7 +607,7 @@ function Stat({label,value,sub,accent,action,icon}){
         <span style={{fontSize:11.5,color:"var(--txt3)",fontWeight:700,textTransform:"uppercase",letterSpacing:.6}}>
           <span style={{color:accent,marginRight:5}}>{icon}</span>{label}</span>{action}
       </div>
-      <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:27,fontWeight:700,marginTop:5,letterSpacing:-.5}}>{value}</div>
+      <div style={{fontFamily:"Inter, sans-serif",fontSize:27,fontWeight:700,marginTop:5,letterSpacing:-.5}}>{value}</div>
       {sub&&<div style={{fontSize:12,color:"var(--txt2)",marginTop:2}}>{sub}</div>}
     </div>
   );
@@ -617,9 +617,9 @@ function Flow({label,value,max,color}){
   return (
     <div style={{margin:"11px 0"}}>
       <div style={{display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:5,color:"var(--txt2)"}}>
-        <span>{label}</span><span style={{fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif",color:"var(--txt)"}}>{INR(value)}</span>
+        <span>{label}</span><span style={{fontWeight:700,fontFamily:"Inter, sans-serif",color:"var(--txt)"}}>{INR(value)}</span>
       </div>
-      <div style={{height:9,background:"rgba(255,255,255,.05)",borderRadius:6,overflow:"hidden"}}>
+      <div style={{height:9,background:"var(--track)",borderRadius:6,overflow:"hidden"}}>
         <div style={{height:"100%",width:`${pct}%`,borderRadius:6,transition:"width .5s cubic-bezier(.2,.7,.3,1)",
           background:`linear-gradient(90deg,${color},${color}cc)`}}/>
       </div>
@@ -651,15 +651,15 @@ function Transactions({txns,all,pTxns,flash,monthLabel}){
             <span style={{width:4,height:40,borderRadius:4,background:colorFor(t.category),flexShrink:0}}/>
             <div style={{flex:1,minWidth:0}}>
               <div style={{fontSize:14,fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>
-                {t.merchant}{t.manual&&<span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",border:"1px solid rgba(45,212,167,.3)",borderRadius:6,padding:"1px 5px",marginLeft:6,verticalAlign:"middle"}}>manual</span>}
+                {t.merchant}{t.manual&&<span style={{fontSize:9,fontWeight:700,color:"var(--accent2)",border:"1px solid rgba(14,147,132,.3)",borderRadius:6,padding:"1px 5px",marginLeft:6,verticalAlign:"middle"}}>manual</span>}
               </div>
               <div style={{fontSize:12,color:"var(--txt3)",marginTop:1,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{t.date.slice(8)}/{t.date.slice(5,7)} · {t.note||"—"}</div>
             </div>
             <select className="miniSel txn-cat" value={t.category} onChange={e=>setCat(t.id,e.target.value)} style={{color:colorFor(t.category),maxWidth:140}}>
-              {CATEGORIES.map(c=><option key={c} value={c} style={{color:"#F2F5FA"}}>{c}</option>)}
+              {CATEGORIES.map(c=><option key={c} value={c} style={{color:"#101828"}}>{c}</option>)}
             </select>
-            <span className="txn-amt" style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif",width:104,textAlign:"right",
-              color:credit?"#31C48D":"var(--txt)"}}>{credit?"+":"−"}{INR2(Math.abs(t.amount))}</span>
+            <span className="txn-amt" style={{fontSize:14,fontWeight:700,fontFamily:"Inter, sans-serif",width:104,textAlign:"right",
+              color:credit?"#079455":"var(--txt)"}}>{credit?"+":"−"}{INR2(Math.abs(t.amount))}</span>
             <button className="del" onClick={()=>remove(t.id)}>×</button>
           </div>
         );})}
@@ -734,10 +734,10 @@ function Subscriptions({all}){
   return (
     <div className="fade">
       <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
-        <Stat label="Active subscriptions" value={list.length} accent="#F5B84D" icon="✦"/>
-        <Stat label="Monthly run-rate" value={INR(monthlyEst)} accent="#F97949" icon="↻"
+        <Stat label="Active subscriptions" value={list.length} accent="#DC6803" icon="✦"/>
+        <Stat label="Monthly run-rate" value={INR(monthlyEst)} accent="#EF6820" icon="↻"
           sub={`~${INR(monthlyEst*12)} / year`}/>
-        <Stat label="Recurring detected" value={recurring.length} accent="#2DD4A7" icon="◉"
+        <Stat label="Recurring detected" value={recurring.length} accent="#0E9384" icon="◉"
           sub="across all categories"/>
       </div>
 
@@ -748,15 +748,15 @@ function Subscriptions({all}){
           const per=g.total/Math.max(1,ms);
           return (
             <div key={g.name} className="row" style={{display:"flex",alignItems:"center",gap:13,padding:"13px 0",borderBottom:"1px solid var(--line)"}}>
-              <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${colorFor("Subscriptions")},#F97949)`,
-                display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:18,color:"#0F1420",flexShrink:0,fontFamily:"Sora, Inter, sans-serif"}}>
+              <div style={{width:42,height:42,borderRadius:12,background:`linear-gradient(135deg,${colorFor("Subscriptions")},#EF6820)`,
+                display:"flex",alignItems:"center",justifyContent:"center",fontWeight:800,fontSize:18,color:"#fff",flexShrink:0,fontFamily:"Inter, sans-serif"}}>
                 {g.name[0]}</div>
               <div style={{flex:1}}>
                 <div style={{fontSize:15,fontWeight:600}}>{g.name}</div>
                 <div style={{fontSize:12,color:"var(--txt3)"}}>{g.txns.length} charge{g.txns.length>1?"s":""} · {ms} month{ms>1?"s":""}</div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontWeight:700,fontSize:16}}>{INR(per)}<span style={{fontSize:11,color:"var(--txt3)"}}>/mo</span></div>
+                <div style={{fontFamily:"Inter, sans-serif",fontWeight:700,fontSize:16}}>{INR(per)}<span style={{fontSize:11,color:"var(--txt3)"}}>/mo</span></div>
                 <div style={{fontSize:11,color:"var(--txt3)"}}>{INR(g.total)} total</div>
               </div>
             </div>
@@ -776,7 +776,7 @@ function Subscriptions({all}){
               <span style={{flex:1,fontSize:14}}>{r.merchant}</span>
               <span style={{fontSize:11,color:"var(--txt3)"}}>{r.category}</span>
               <span style={{fontSize:11,color:"var(--accent2)",fontWeight:600}}>{r.months}× months</span>
-              <span style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontWeight:700,width:90,textAlign:"right"}}>~{INR(r.avg)}</span>
+              <span style={{fontFamily:"Inter, sans-serif",fontWeight:700,width:90,textAlign:"right"}}>~{INR(r.avg)}</span>
             </div>
           ))}
       </div>
@@ -805,14 +805,14 @@ function Budgets({budgets,pBud,byCat,flash}){
                 <span style={{fontSize:13,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",color:"var(--txt2)"}}>{c}</span>
               </div>
               <div>
-                <div style={{height:9,background:"rgba(255,255,255,.05)",borderRadius:6,overflow:"hidden"}}>
+                <div style={{height:9,background:"var(--track)",borderRadius:6,overflow:"hidden"}}>
                   <div style={{height:"100%",width:`${pct}%`,borderRadius:6,transition:"width .5s",
-                    background:over?"linear-gradient(90deg,#F4506E,#F97949)":`linear-gradient(90deg,${colorFor(c)},${colorFor(c)}cc)`,
+                    background:over?"linear-gradient(90deg,#D92D20,#EF6820)":`linear-gradient(90deg,${colorFor(c)},${colorFor(c)}cc)`,
                     }}/>
                 </div>
                 <div style={{fontSize:11.5,color:"var(--txt3)",marginTop:4}}>
                   {INR(spent)}{cap>0?` / ${INR(cap)}`:" spent"}
-                  {over&&<span style={{color:"#F4506E",fontWeight:700}}> · over by {INR(spent-cap)}</span>}
+                  {over&&<span style={{color:"#D92D20",fontWeight:700}}> · over by {INR(spent-cap)}</span>}
                 </div>
               </div>
               <input className="inp budget-input" type="number" placeholder="—" value={d[c]||""} onChange={e=>setD({...d,[c]:e.target.value})} style={{textAlign:"right",padding:"8px 10px"}}/>
@@ -861,26 +861,26 @@ function Goals({txns,fin,income,budgets,pBud,flash}){
   return (
     <div className="fade">
       {goal&&(
-        <div className="glass" style={{padding:26,marginBottom:18,background:"linear-gradient(135deg,rgba(16,185,129,.16),rgba(245,184,77,.06))",border:"1px solid rgba(16,185,129,.28)"}}>
+        <div className="glass" style={{padding:26,marginBottom:18,background:"linear-gradient(135deg,rgba(7,148,85,.16),rgba(220,104,3,.06))",border:"1px solid rgba(7,148,85,.28)"}}>
           <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:10}}>
             <div>
               <div style={{fontSize:12,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:1}}>🎯 {goal.name}</div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:34,fontWeight:700,letterSpacing:-1,margin:"4px 0"}}>{INR(corpus)} <span style={{fontSize:16,color:"var(--txt3)"}}>of {INR(goal.target)}</span></div>
+              <div style={{fontFamily:"Inter, sans-serif",fontSize:34,fontWeight:700,letterSpacing:-1,margin:"4px 0"}}>{INR(corpus)} <span style={{fontSize:16,color:"var(--txt3)"}}>of {INR(goal.target)}</span></div>
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontSize:30,fontWeight:700,color:"#F5B84D"}}>{pct}%</div>
+              <div style={{fontFamily:"Inter, sans-serif",fontSize:30,fontWeight:700,color:"#DC6803"}}>{pct}%</div>
               {goal.by&&<div style={{fontSize:12,color:"var(--txt3)"}}>target: {monthLabel(goal.by)}</div>}
             </div>
           </div>
-          <div style={{height:14,background:"rgba(255,255,255,.06)",borderRadius:8,overflow:"hidden",margin:"14px 0 10px"}}>
+          <div style={{height:14,background:"var(--track)",borderRadius:8,overflow:"hidden",margin:"14px 0 10px"}}>
             <div style={{height:"100%",width:pct+"%",borderRadius:8,transition:"width 1s cubic-bezier(.2,.7,.3,1)",
-              background:"linear-gradient(90deg,#10B981,#F5B84D)"}}/>
+              background:"linear-gradient(90deg,#079455,#DC6803)"}}/>
           </div>
           <div style={{fontSize:13.5,color:"var(--txt2)",lineHeight:1.7}}>
             {remaining>0?<>
-              {INR(remaining)} to go. At your average pace of <b style={{color:"var(--txt)"}}>{INR(pace)}/month</b>{eta?<>, you'll reach it around <b style={{color:"#F5B84D"}}>{eta}</b></>:", set a positive savings pace to project an arrival date"}.
-              {onTrack!=null&&<span style={{marginLeft:6,fontWeight:700,color:onTrack?"#31C48D":"#F4506E"}}>{onTrack?"✓ On track":"⚠ Behind schedule"}</span>}
-            </>:<b style={{color:"#31C48D"}}>Goal reached! 🎉</b>}
+              {INR(remaining)} to go. At your average pace of <b style={{color:"var(--txt)"}}>{INR(pace)}/month</b>{eta?<>, you'll reach it around <b style={{color:"#DC6803"}}>{eta}</b></>:", set a positive savings pace to project an arrival date"}.
+              {onTrack!=null&&<span style={{marginLeft:6,fontWeight:700,color:onTrack?"#079455":"#D92D20"}}>{onTrack?"✓ On track":"⚠ Behind schedule"}</span>}
+            </>:<b style={{color:"#079455"}}>Goal reached! 🎉</b>}
           </div>
           <div style={{fontSize:11,color:"var(--txt3)",marginTop:10}}>Corpus = latest account closing balance · pace = avg(income − spending) across {paces.length} months. Investments held elsewhere aren't counted.</div>
         </div>
@@ -919,23 +919,23 @@ function Trends({txns,income}){
           <RC.ResponsiveContainer>
             {single?(
               <RC.BarChart data={data}>
-                <RC.CartesianGrid strokeDasharray="3 3" stroke="#1E2634" vertical={false}/>
-                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#9AA6BB"}}/>
-                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#5F6B7E"}}/>
+                <RC.CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" vertical={false}/>
+                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#667085"}}/>
+                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#98A2B3"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Bar dataKey="Income" fill="#10B981" radius={[6,6,0,0]}/>
-                <RC.Bar dataKey="Spending" fill="#F97949" radius={[6,6,0,0]}/>
-                <RC.Bar dataKey="Invested" fill="#31C48D" radius={[6,6,0,0]}/>
+                <RC.Bar dataKey="Income" fill="#079455" radius={[6,6,0,0]}/>
+                <RC.Bar dataKey="Spending" fill="#EF6820" radius={[6,6,0,0]}/>
+                <RC.Bar dataKey="Invested" fill="#079455" radius={[6,6,0,0]}/>
               </RC.BarChart>
             ):(
               <RC.LineChart data={data}>
-                <RC.CartesianGrid strokeDasharray="3 3" stroke="#1E2634" vertical={false}/>
-                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#9AA6BB"}}/>
-                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#5F6B7E"}}/>
+                <RC.CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" vertical={false}/>
+                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#667085"}}/>
+                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#98A2B3"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Line dataKey="Income" stroke="#10B981" strokeWidth={3} dot={{r:4,fill:"#10B981"}}/>
-                <RC.Line dataKey="Spending" stroke="#F97949" strokeWidth={3} dot={{r:4,fill:"#F97949"}}/>
-                <RC.Line dataKey="Invested" stroke="#31C48D" strokeWidth={3} dot={{r:4,fill:"#31C48D"}}/>
+                <RC.Line dataKey="Income" stroke="#079455" strokeWidth={3} dot={{r:4,fill:"#079455"}}/>
+                <RC.Line dataKey="Spending" stroke="#EF6820" strokeWidth={3} dot={{r:4,fill:"#EF6820"}}/>
+                <RC.Line dataKey="Invested" stroke="#079455" strokeWidth={3} dot={{r:4,fill:"#079455"}}/>
               </RC.LineChart>
             )}
           </RC.ResponsiveContainer>
@@ -947,11 +947,11 @@ function Trends({txns,income}){
           <div className="chart-box" style={{height:240}}>
             <RC.ResponsiveContainer>
               <RC.BarChart data={data}>
-                <RC.CartesianGrid strokeDasharray="3 3" stroke="#1E2634" vertical={false}/>
-                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#9AA6BB"}}/>
-                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#5F6B7E"}}/>
+                <RC.CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" vertical={false}/>
+                <RC.XAxis dataKey="month" tick={{fontSize:12,fill:"#667085"}}/>
+                <RC.YAxis tickFormatter={v=>"₹"+v/1000+"k"} tick={{fontSize:11,fill:"#98A2B3"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Bar dataKey="Spending" fill="#F97949" radius={[6,6,0,0]}/>
+                <RC.Bar dataKey="Spending" fill="#EF6820" radius={[6,6,0,0]}/>
               </RC.BarChart>
             </RC.ResponsiveContainer>
           </div>
@@ -1000,7 +1000,7 @@ function Importer({all,pTxns,setActiveMonth,setTab,flash}){
         </div>
         <div style={{textAlign:"center",color:"var(--txt3)",fontSize:12,margin:"14px 0"}}>— or paste rows —</div>
         <PasteBox onParse={handleText}/>
-        {err&&<div style={{marginTop:12,padding:"11px 15px",background:"rgba(244,80,110,.12)",color:"#FF8AAE",borderRadius:12,fontSize:13}}>{err}</div>}
+        {err&&<div style={{marginTop:12,padding:"11px 15px",background:"rgba(217,45,32,.12)",color:"#D92D20",borderRadius:12,fontSize:13}}>{err}</div>}
       </div>
       {preview&&(
         <div className="glass pop" style={{padding:22}}>
@@ -1021,7 +1021,7 @@ function Importer({all,pTxns,setActiveMonth,setTab,flash}){
                 <span style={{flex:1,fontSize:13}}>{t.merchant}</span>
                 <span style={{fontSize:12,color:"var(--txt3)"}}>{t.date}</span>
                 <span style={{fontSize:11.5,color:"var(--txt2)",width:120}}>{t.category}</span>
-                <span style={{fontSize:13,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif",color:t.amount>0?"#31C48D":"var(--txt)"}}>{t.amount>0?"+":"−"}{INR(Math.abs(t.amount))}</span>
+                <span style={{fontSize:13,fontWeight:700,fontFamily:"Inter, sans-serif",color:t.amount>0?"#079455":"var(--txt)"}}>{t.amount>0?"+":"−"}{INR(Math.abs(t.amount))}</span>
               </div>
             ))}
           </div>
@@ -1047,8 +1047,8 @@ function PasteBox({onParse}){
 }
 
 /* ---------------- Portfolio (Groww stocks + mutual funds) ---------------- */
-const PIE_COLORS=["#2DD4A7","#31C48D","#4D9FFF","#F5B84D","#F97949","#F4506E","#56CCF2","#C49A6C","#FF77A9","#8794B8","#26C296","#E0B84D"];
-const pnlColor=v=>v>0?"#31C48D":v<0?"#F4506E":"var(--txt2)";
+const PIE_COLORS=["#175CD3","#067647","#DC6803","#5925DC","#B42318","#0E9384","#3E4784","#C11574","#475467","#087443","#B54708","#444CE7"];
+const pnlColor=v=>v>0?"#079455":v<0?"#D92D20":"var(--txt2)";
 const signedINR=v=>(v>=0?"+":"−")+INR(Math.abs(v));
 const pctStr=(part,base)=>base>0?((part/base*100)>=0?"+":"")+ (part/base*100).toFixed(1)+"%":"—";
 
@@ -1080,7 +1080,7 @@ function PortfolioImport({onParsed,compact}){
         <div style={{fontWeight:700,marginTop:6}}>Tap to import a Groww holdings statement</div>
         <div style={{fontSize:12,color:"var(--txt3)"}}>.xlsx straight from Groww (Reports → Holdings) — stocks and mutual funds both work</div>
       </div>
-      {err&&<div style={{marginTop:12,padding:"11px 15px",background:"rgba(244,80,110,.12)",color:"#FF8AAE",borderRadius:12,fontSize:13}}>{err}</div>}
+      {err&&<div style={{marginTop:12,padding:"11px 15px",background:"rgba(217,45,32,.12)",color:"#D92D20",borderRadius:12,fontSize:13}}>{err}</div>}
     </div>
   );
 }
@@ -1092,7 +1092,7 @@ function MiniMarkdown({text}){
   return (
     <div style={{fontSize:13.5,lineHeight:1.7,color:"var(--txt2)"}}>
       {String(text||"").split(/\r?\n/).map((l,i)=>{
-        if(/^#{1,3}\s/.test(l))return <div key={i} style={{fontFamily:"Sora, Inter, sans-serif",fontWeight:700,fontSize:15,color:"var(--txt)",margin:"14px 0 4px"}}>{l.replace(/^#+\s*/,"")}</div>;
+        if(/^#{1,3}\s/.test(l))return <div key={i} style={{fontFamily:"Inter, sans-serif",fontWeight:700,fontSize:15,color:"var(--txt)",margin:"14px 0 4px"}}>{l.replace(/^#+\s*/,"")}</div>;
         if(/^\s*[-•*]\s/.test(l))return <div key={i} style={{display:"flex",gap:8,margin:"3px 0"}}><span style={{color:"var(--accent2)"}}>•</span><span>{fmt(l.replace(/^\s*[-•*]\s/,""))}</span></div>;
         if(l.trim()==="")return <div key={i} style={{height:8}}/>;
         return <div key={i}>{fmt(l)}</div>;
@@ -1112,8 +1112,8 @@ function AIInsightPanel({user}){
     return ()=>{alive=false;};
   },[user]);
   return (
-    <div className="glass" style={{padding:22,marginBottom:16,border:"1px solid rgba(45,212,167,.25)",
-      background:"linear-gradient(135deg,rgba(16,185,129,.10),rgba(77,168,255,.05))"}}>
+    <div className="glass" style={{padding:22,marginBottom:16,border:"1px solid rgba(14,147,132,.25)",
+      background:"linear-gradient(135deg,rgba(7,148,85,.10),rgba(77,168,255,.05))"}}>
       <h3 style={{...ti,display:"flex",alignItems:"center",gap:8}}>🤖 AI portfolio analysis
         {state.row&&<span style={{fontSize:10,fontWeight:600,color:"var(--txt3)",border:"1px solid var(--line2)",borderRadius:20,padding:"2px 8px"}}>
           {new Date(state.row.created_at).toLocaleDateString("en-IN",{day:"numeric",month:"short"})}</span>}
@@ -1190,13 +1190,27 @@ function Portfolio({portfolio,pPort,flash,user}){
   const refreshNAVs=async()=>{
     if(liveBusy)return; setLiveBusy(true);
     try{
-      const navs=await fetchLiveNAVs(p.funds);
+      const navs=await fetchLiveNAVs(p.funds,{force:true});
       const matched=Object.keys(navs).length;
       if(matched===0){flash("Couldn't fetch live NAVs — showing statement values");}
       else{setLive(navs);flash(`Live NAVs loaded for ${matched} of ${fundAgg.length} schemes`);}
     }catch(e){flash("Couldn't fetch live NAVs — showing statement values");}
     setLiveBusy(false);
   };
+  // auto-load NAVs when the tab opens (cache-first, silent on failure)
+  useEffect(()=>{
+    if(!p.funds.length)return;
+    let alive=true;
+    (async()=>{
+      setLiveBusy(true);
+      try{
+        const navs=await fetchLiveNAVs(p.funds);
+        if(alive&&Object.keys(navs).length)setLive(navs);
+      }catch(e){/* statement values remain */}
+      if(alive)setLiveBusy(false);
+    })();
+    return ()=>{alive=false;};
+  },[p.funds.length]);
   const liveValueOf=name=>live&&live[name]?live[name].nav*(unitsBy[name]||0):null;
   const liveFCur=live?fundAgg.reduce((a,f)=>a+(liveValueOf(f.name)??f.current),0):null;
 
@@ -1204,7 +1218,7 @@ function Portfolio({portfolio,pPort,flash,user}){
     <div className="fade">
       <div className="glass" style={{padding:40,textAlign:"center",marginBottom:16}}>
         <div style={{fontSize:42}}>📈</div>
-        <h3 style={{fontFamily:"Sora, Inter, sans-serif",marginTop:10}}>Bring in your investments</h3>
+        <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>Bring in your investments</h3>
         <p style={{color:"var(--txt2)",fontSize:14,maxWidth:520,margin:"6px auto 0",lineHeight:1.6}}>
           Export your holdings from Groww (<b>Profile → Reports → Stocks / Mutual funds holdings</b>) and drop the
           .xlsx here — no conversion needed. Stocks and mutual funds are tracked separately and merged into one view.
@@ -1217,18 +1231,18 @@ function Portfolio({portfolio,pPort,flash,user}){
   return (
     <div className="fade">
       <div className="stat-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:14,marginBottom:18}}>
-        <Hero label="Portfolio value" value={INR(cur)} accent="#10B981" icon="📈"
+        <Hero label="Portfolio value" value={INR(cur)} accent="#079455" icon="📈"
           sub={`${signedINR(pnl)} (${pctStr(pnl,inv)}) on ${INR(inv)} invested`}/>
-        <Stat label="Stocks" value={INR(sCur)} accent="#4D9FFF" icon="◧"
+        <Stat label="Stocks" value={INR(sCur)} accent="#2E90FA" icon="◧"
           sub={p.stocks.length?`${p.stocks.length} holdings · ${signedINR(sCur-sInv)}${p.stocksAsOf?` · as on ${p.stocksAsOf.slice(8)}/${p.stocksAsOf.slice(5,7)}`:""}`:"not imported yet"}/>
-        <Stat label="Mutual funds" value={INR(liveFCur??fCur)} accent="#F5B84D" icon="◨"
+        <Stat label="Mutual funds" value={INR(liveFCur??fCur)} accent="#DC6803" icon="◨"
           sub={p.funds.length?`${fundAgg.length} schemes · ${signedINR((liveFCur??fCur)-fInv)}${liveFCur!=null?" · live NAV":(p.fundsAsOf?` · as on ${p.fundsAsOf.slice(8)}/${p.fundsAsOf.slice(5,7)}`:"")}`:"not imported yet"}/>
-        <Stat label="Unrealised P&L" value={signedINR(pnl)} accent={pnl>=0?"#31C48D":"#F4506E"} icon={pnl>=0?"▲":"▼"}
+        <Stat label="Unrealised P&L" value={signedINR(pnl)} accent={pnl>=0?"#079455":"#D92D20"} icon={pnl>=0?"▲":"▼"}
           sub={`${pctStr(pnl,inv)} overall`}/>
       </div>
 
       {user&&!Cloud.portfolioCol&&(
-        <div style={{padding:"11px 15px",background:"rgba(245,184,77,.12)",color:"#F5B84D",borderRadius:12,fontSize:13,marginBottom:16}}>
+        <div style={{padding:"11px 15px",background:"rgba(220,104,3,.12)",color:"#DC6803",borderRadius:12,fontSize:13,marginBottom:16}}>
           Portfolio is saved on this device only — add the <b>portfolio</b> column to your Supabase table
           (one line of SQL in the README) to sync it across devices.
         </div>
@@ -1261,22 +1275,22 @@ function Portfolio({portfolio,pPort,flash,user}){
       {(movers.best||concentration)&&(
         <div className="insight-grid" style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(240px,1fr))",gap:14,marginBottom:16}}>
           {movers.best&&movers.best.pnl>0&&(
-            <div className="glass" style={{padding:16,border:"1px solid rgba(49,196,141,.3)",background:"rgba(49,196,141,.08)"}}>
+            <div className="glass" style={{padding:16,border:"1px solid rgba(7,148,85,.3)",background:"rgba(7,148,85,.08)"}}>
               <div style={{fontSize:12,color:"var(--txt3)"}}>🏆 Best performer</div>
               <div style={{fontWeight:700,marginTop:3}}>{movers.best.name}</div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontWeight:700,color:"#31C48D"}}>+{movers.best.pct.toFixed(1)}% · {signedINR(movers.best.pnl)}</div>
+              <div style={{fontFamily:"Inter, sans-serif",fontWeight:700,color:"#079455"}}>+{movers.best.pct.toFixed(1)}% · {signedINR(movers.best.pnl)}</div>
             </div>)}
           {movers.worst&&movers.worst.pnl<0&&(
-            <div className="glass" style={{padding:16,border:"1px solid rgba(244,80,110,.3)",background:"rgba(244,80,110,.08)"}}>
+            <div className="glass" style={{padding:16,border:"1px solid rgba(217,45,32,.3)",background:"rgba(217,45,32,.08)"}}>
               <div style={{fontSize:12,color:"var(--txt3)"}}>🩹 Biggest drag</div>
               <div style={{fontWeight:700,marginTop:3}}>{movers.worst.name}</div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontWeight:700,color:"#F4506E"}}>{movers.worst.pct.toFixed(1)}% · {signedINR(movers.worst.pnl)}</div>
+              <div style={{fontFamily:"Inter, sans-serif",fontWeight:700,color:"#D92D20"}}>{movers.worst.pct.toFixed(1)}% · {signedINR(movers.worst.pnl)}</div>
             </div>)}
           {concentration&&concentration.share>15&&(
-            <div className="glass" style={{padding:16,border:"1px solid rgba(245,184,77,.3)",background:"rgba(245,184,77,.08)"}}>
+            <div className="glass" style={{padding:16,border:"1px solid rgba(220,104,3,.3)",background:"rgba(220,104,3,.08)"}}>
               <div style={{fontSize:12,color:"var(--txt3)"}}>⚖️ Concentration</div>
               <div style={{fontWeight:700,marginTop:3}}>{concentration.name}</div>
-              <div style={{fontFamily:"Space Grotesk, Inter, sans-serif",fontWeight:700,color:"#F5B84D"}}>{concentration.share.toFixed(0)}% of your stock portfolio</div>
+              <div style={{fontFamily:"Inter, sans-serif",fontWeight:700,color:"#DC6803"}}>{concentration.share.toFixed(0)}% of your stock portfolio</div>
             </div>)}
         </div>
       )}
@@ -1301,7 +1315,7 @@ function Portfolio({portfolio,pPort,flash,user}){
                   <div key={d.name} style={{display:"flex",alignItems:"center",gap:9,padding:"5px 0",borderBottom:"1px solid var(--line)"}}>
                     <span style={{width:10,height:10,borderRadius:3,background:PIE_COLORS[i%PIE_COLORS.length],flexShrink:0}}/>
                     <span style={{flex:1,fontSize:13,color:"var(--txt2)"}}>{d.name}</span>
-                    <span style={{fontSize:13,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(d.value)}</span>
+                    <span style={{fontSize:13,fontWeight:700,fontFamily:"Inter, sans-serif"}}>{INR(d.value)}</span>
                     <span style={{fontSize:11,color:"var(--txt3)",width:36,textAlign:"right"}}>{cur>0?Math.round(d.value/cur*100):0}%</span>
                   </div>))}
               </div>
@@ -1326,7 +1340,7 @@ function Portfolio({portfolio,pPort,flash,user}){
                     <div key={d.name} style={{display:"flex",alignItems:"center",gap:9,padding:"5px 0",borderBottom:"1px solid var(--line)"}}>
                       <span style={{width:10,height:10,borderRadius:3,background:PIE_COLORS[(i+3)%PIE_COLORS.length],flexShrink:0}}/>
                       <span style={{flex:1,fontSize:12.5,color:"var(--txt2)",whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis"}}>{d.name}</span>
-                      <span style={{fontSize:12.5,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(d.value)}</span>
+                      <span style={{fontSize:12.5,fontWeight:700,fontFamily:"Inter, sans-serif"}}>{INR(d.value)}</span>
                     </div>))}
                 </div>
               </div>
@@ -1351,11 +1365,11 @@ function Portfolio({portfolio,pPort,flash,user}){
                     <div style={{fontSize:13.5,fontWeight:600}}>{r.name}</div>
                     <div style={{fontSize:11,color:"var(--txt3)"}}>{INR(r.buyValue)} invested</div>
                   </div>
-                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{r.qty}</span>
-                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR2(r.avg)}</span>
-                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR2(r.ltp)}</span>
-                  <span style={{textAlign:"right",fontSize:13,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(r.curValue)}</span>
-                  <span style={{textAlign:"right",fontSize:12.5,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif",color:pnlColor(r.pnl)}}>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Inter, sans-serif"}}>{r.qty}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Inter, sans-serif"}}>{INR2(r.avg)}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontFamily:"Inter, sans-serif"}}>{INR2(r.ltp)}</span>
+                  <span style={{textAlign:"right",fontSize:13,fontWeight:700,fontFamily:"Inter, sans-serif"}}>{INR(r.curValue)}</span>
+                  <span style={{textAlign:"right",fontSize:12.5,fontWeight:700,fontFamily:"Inter, sans-serif",color:pnlColor(r.pnl)}}>
                     {signedINR(r.pnl)}<div style={{fontSize:10.5,fontWeight:600}}>{pctStr(r.pnl,r.buyValue)}</div>
                   </span>
                 </div>))}
@@ -1386,8 +1400,8 @@ function Portfolio({portfolio,pPort,flash,user}){
                 </div>
               </div>
               <div style={{textAlign:"right"}}>
-                <div style={{fontSize:14,fontWeight:700,fontFamily:"Space Grotesk, Inter, sans-serif"}}>{INR(shown)}
-                  {lv!=null&&<span style={{fontSize:9,fontWeight:800,color:"#06251B",background:"var(--accent2)",borderRadius:5,padding:"1.5px 5px",marginLeft:6,verticalAlign:"middle"}}>LIVE</span>}
+                <div style={{fontSize:14,fontWeight:700,fontFamily:"Inter, sans-serif"}}>{INR(shown)}
+                  {lv!=null&&<span style={{fontSize:9,fontWeight:800,color:"#fff",background:"var(--accent2)",borderRadius:5,padding:"1.5px 5px",marginLeft:6,verticalAlign:"middle"}}>LIVE</span>}
                 </div>
                 <div style={{fontSize:11.5,fontWeight:600,color:pnlColor(gain)}}>{signedINR(gain)} ({pctStr(gain,f.invested)})</div>
               </div>
@@ -1402,11 +1416,11 @@ function Portfolio({portfolio,pPort,flash,user}){
           <div className="chart-box" style={{height:220}}>
             <RC.ResponsiveContainer>
               <RC.LineChart data={p.history.map(h=>({...h,label:`${h.date.slice(8)}/${h.date.slice(5,7)}`}))}>
-                <RC.CartesianGrid strokeDasharray="3 3" stroke="#1E2634" vertical={false}/>
-                <RC.XAxis dataKey="label" tick={{fontSize:11,fill:"#9AA6BB"}}/>
-                <RC.YAxis tickFormatter={v=>"₹"+Math.round(v/1000)+"k"} tick={{fontSize:11,fill:"#5F6B7E"}}/>
+                <RC.CartesianGrid strokeDasharray="3 3" stroke="#E4E7EC" vertical={false}/>
+                <RC.XAxis dataKey="label" tick={{fontSize:11,fill:"#667085"}}/>
+                <RC.YAxis tickFormatter={v=>"₹"+Math.round(v/1000)+"k"} tick={{fontSize:11,fill:"#98A2B3"}}/>
                 <RC.Tooltip contentStyle={tip} formatter={v=>INR(v)}/>
-                <RC.Line dataKey="current" name="Value" stroke="#2DD4A7" strokeWidth={3} dot={{r:4,fill:"#2DD4A7"}}/>
+                <RC.Line dataKey="current" name="Value" stroke="#0E9384" strokeWidth={3} dot={{r:4,fill:"#0E9384"}}/>
                 <RC.Line dataKey="invested" name="Invested" stroke="#8794B8" strokeWidth={2} strokeDasharray="5 4" dot={{r:3,fill:"#8794B8"}}/>
               </RC.LineChart>
             </RC.ResponsiveContainer>
@@ -1428,9 +1442,9 @@ function Portfolio({portfolio,pPort,flash,user}){
 
 /* ---------------- bits ---------------- */
 function Empty({msg}){return <div style={{padding:"30px 16px",textAlign:"center",color:"var(--txt3)",fontSize:13.5,lineHeight:1.6}}>{msg}</div>;}
-const ti={margin:"0 0 16px",fontFamily:"Sora, Inter, sans-serif",fontSize:16,fontWeight:700,letterSpacing:-.2};
+const ti={margin:"0 0 16px",fontFamily:"Inter, sans-serif",fontSize:16,fontWeight:700,letterSpacing:-.2};
 const lbl={fontSize:11,color:"var(--txt3)",textTransform:"uppercase",letterSpacing:.6,fontWeight:600};
-const tip={background:"#131824",border:"1px solid #2A3446",borderRadius:12,color:"#F2F5FA",fontSize:13};
+const tip={background:"#101828",border:"1px solid #101828",borderRadius:12,color:"#F2F5FA",fontSize:13};
 
 
 function App(){
@@ -1507,7 +1521,7 @@ function App(){
           <span className="brand-badge" style={{width:50,height:50,borderRadius:15,fontSize:27}}>₹</span>
           <span className="brand-word" style={{fontSize:38}}>paisa</span>
         </div>
-        <div style={{color:"#5F6B7E",fontSize:13,marginTop:12}}>loading your money…</div>
+        <div style={{color:"#98A2B3",fontSize:13,marginTop:12}}>loading your money…</div>
       </div>
     </div>
   );
