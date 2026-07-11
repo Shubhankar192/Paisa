@@ -1,8 +1,10 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// base must match the GitHub Pages project path: username.github.io/Paisa/
+// GitHub Pages serves at username.github.io/Paisa/ (needs base "/Paisa/");
+// Vercel serves at the domain root. Vercel sets VERCEL=1 during builds,
+// so both hosts work with no manual configuration.
 export default defineConfig({
-  base: "/Paisa/",
+  base: process.env.VERCEL ? "/" : "/Paisa/",
   plugins: [react()],
 });
