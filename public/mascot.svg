@@ -34,7 +34,10 @@
   <ellipse cx="157" cy="126" rx="8" ry="5" fill="#7BE0AE" opacity="0.55"/>
   <!-- small happy open smile -->
   <path d="M106 128 Q120 147 134 128 Q120 137 106 128 Z" fill="#0B2E20"/>
-  <!-- ₹ badge: solid white coin-stamp, symbol optically centered -->
-  <circle cx="120" cy="172" r="24" fill="#ffffff" opacity="0.92"/>
-  <text x="120" y="173" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#05603A" text-anchor="middle" dominant-baseline="central">&#8377;</text>
+  <!-- ₹ watermark: large, subtle, embossed into the coin body -->
+  <clipPath id="mclip"><circle cx="120" cy="128" r="82"/></clipPath>
+  <g clip-path="url(#mclip)">
+    <text x="120" y="172" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700"
+      fill="#ffffff" fill-opacity="0.17" text-anchor="middle" dominant-baseline="central">&#8377;</text>
+  </g>
 </svg>
