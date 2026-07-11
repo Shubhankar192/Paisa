@@ -10,6 +10,8 @@ import {
   computeDecisionInsights, fetchLiveNAVs,
 } from "./lib.js";
 
+const MASCOT=import.meta.env.BASE_URL+"mascot.svg";
+
 /* ---------------- Auth screen ---------------- */
 function Auth({onAuthed}){
   const [mode,setMode]=useState("signin"); // signin | signup
@@ -256,7 +258,7 @@ function Insights({txns,fin,income,setTab}){
 
   if(txns.length===0)return (
     <div className="glass fade" style={{padding:40,textAlign:"center"}}>
-      <div style={{fontSize:42}}>✦</div>
+      <img src={MASCOT} alt="Paisa mascot" width="96" height="96" style={{display:"block",margin:"0 auto"}}/>
       <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>No insights yet</h3>
       <p style={{color:"var(--txt2)",fontSize:14}}>Import a statement and your personalized financial intelligence appears here.</p>
       <button className="chip primary" style={{marginTop:8}} onClick={()=>setTab("import")}>↑ Import a statement</button>
@@ -1217,7 +1219,7 @@ function Portfolio({portfolio,pPort,flash,user}){
   if(!hasData)return (
     <div className="fade">
       <div className="glass" style={{padding:40,textAlign:"center",marginBottom:16}}>
-        <div style={{fontSize:42}}>📈</div>
+        <img src={MASCOT} alt="Paisa mascot" width="104" height="104" style={{display:"block",margin:"0 auto"}}/>
         <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>Bring in your investments</h3>
         <p style={{color:"var(--txt2)",fontSize:14,maxWidth:520,margin:"6px auto 0",lineHeight:1.6}}>
           Export your holdings from Groww (<b>Profile → Reports → Stocks / Mutual funds holdings</b>) and drop the
