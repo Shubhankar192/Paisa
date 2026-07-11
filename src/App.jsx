@@ -10,7 +10,7 @@ import {
   computeDecisionInsights, fetchLiveNAVs,
 } from "./lib.js";
 
-const MASCOT=import.meta.env.BASE_URL+"mascot.svg";
+import Sprout, { SproutPeek } from "./Sprout.jsx";
 
 /* ---------------- Auth screen ---------------- */
 function Auth({onAuthed}){
@@ -258,7 +258,7 @@ function Insights({txns,fin,income,setTab}){
 
   if(txns.length===0)return (
     <div className="glass fade" style={{padding:40,textAlign:"center"}}>
-      <img src={MASCOT} alt="Paisa mascot" width="96" height="96" style={{display:"block",margin:"0 auto"}}/>
+      <Sprout size={96} style={{display:"block",margin:"0 auto"}}/>
       <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>No insights yet</h3>
       <p style={{color:"var(--txt2)",fontSize:14}}>Import a statement and your personalized financial intelligence appears here.</p>
       <button className="chip primary" style={{marginTop:8}} onClick={()=>setTab("import")}>↑ Import a statement</button>
@@ -382,6 +382,7 @@ function Tracker({initial, persist, user, onSignOut, cloud}){
           {tab==="import"&&<Importer all={txns} pTxns={pTxnsNow} setActiveMonth={setActiveMonth} setTab={setTab} flash={flash}/>}
         </main>
       </div>
+      <SproutPeek/>
       {toast&&<div style={{position:"fixed",bottom:26,left:"50%",transform:"translateX(-50%)",
         background:"#101828",color:"#fff",padding:"12px 22px",
         borderRadius:10,fontSize:14,fontWeight:600,zIndex:100,boxShadow:"0 8px 24px rgba(16,24,40,.3)",
@@ -792,8 +793,19 @@ function Budgets({budgets,pBud,byCat,flash}){
   const cats=CATEGORIES.filter(c=>!NONSPEND.has(c));
   const save=()=>{const clean=budgets._goals?{_goals:budgets._goals}:{};
     Object.entries(d).forEach(([k,v])=>{if(k!=="_goals"&&Number(v)>0)clean[k]=Number(v);}); pBud(clean); flash("Budgets saved");};
+  const overCats=cats.filter(c=>{const cap=Number(budgets[c])||0;return cap>0&&(byCat[c]||0)>cap;});
   return (
     <div className="fade">
+      {overCats.length>0&&(
+        <div className="glass" style={{padding:"14px 20px",marginBottom:14,display:"flex",alignItems:"center",gap:14,
+          border:"1px solid #FECDCA",background:"#FEF3F2"}}>
+          <Sprout pose="worried" size={62}/>
+          <div>
+            <div style={{fontSize:14,fontWeight:700,color:"#B42318"}}>Sprout is worried — {overCats.length} budget{overCats.length>1?"s":""} over the line</div>
+            <div style={{fontSize:12.5,color:"var(--txt2)",marginTop:2}}>{overCats.join(", ")} {overCats.length>1?"are":"is"} past the monthly cap. The red bars below show by how much.</div>
+          </div>
+        </div>
+      )}
       <div className="glass" style={{padding:22}}>
         <h3 style={ti}>Monthly budgets</h3>
         <p style={{fontSize:13,color:"var(--txt3)",margin:"0 0 16px"}}>Set a cap per category. Bars fill as you spend this month; they glow red when you cross the line.</p>
@@ -882,7 +894,7 @@ function Goals({txns,fin,income,budgets,pBud,flash}){
             {remaining>0?<>
               {INR(remaining)} to go. At your average pace of <b style={{color:"var(--txt)"}}>{INR(pace)}/month</b>{eta?<>, you'll reach it around <b style={{color:"#DC6803"}}>{eta}</b></>:", set a positive savings pace to project an arrival date"}.
               {onTrack!=null&&<span style={{marginLeft:6,fontWeight:700,color:onTrack?"#079455":"#D92D20"}}>{onTrack?"✓ On track":"⚠ Behind schedule"}</span>}
-            </>:<b style={{color:"#079455"}}>Goal reached! 🎉</b>}
+            </>:<span style={{display:"flex",alignItems:"center",gap:12}}><Sprout pose="party" size={64}/><b style={{color:"#079455",fontSize:16}}>Goal reached — Sprout is celebrating with you! 🎉</b></span>}
           </div>
           <div style={{fontSize:11,color:"var(--txt3)",marginTop:10}}>Corpus = latest account closing balance · pace = avg(income − spending) across {paces.length} months. Investments held elsewhere aren't counted.</div>
         </div>
@@ -1219,7 +1231,7 @@ function Portfolio({portfolio,pPort,flash,user}){
   if(!hasData)return (
     <div className="fade">
       <div className="glass" style={{padding:40,textAlign:"center",marginBottom:16}}>
-        <img src={MASCOT} alt="Paisa mascot" width="104" height="104" style={{display:"block",margin:"0 auto"}}/>
+        <Sprout size={104} style={{display:"block",margin:"0 auto"}}/>
         <h3 style={{fontFamily:"Inter, sans-serif",marginTop:10}}>Bring in your investments</h3>
         <p style={{color:"var(--txt2)",fontSize:14,maxWidth:520,margin:"6px auto 0",lineHeight:1.6}}>
           Export your holdings from Groww (<b>Profile → Reports → Stocks / Mutual funds holdings</b>) and drop the

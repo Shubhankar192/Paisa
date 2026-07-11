@@ -123,3 +123,7 @@
     backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px);}
   button, select, .chip, .icoBtn{touch-action:manipulation;}
   .txnRowWrap{overscroll-behavior:contain;}
+
+  /* Sprout mascot: waving arm */
+  @keyframes sproutWave{0%,100%{transform:rotate(0deg);}25%{transform:rotate(-22deg);}50%{transform:rotate(10deg);}75%{transform:rotate(-16deg);}}
+  .sprout-wave-arm{transform-box:view-box; transform-origin:84% 47%; animation:sproutWave 1.5s ease-in-out infinite;}
