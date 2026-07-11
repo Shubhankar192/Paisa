@@ -14,12 +14,12 @@ const CATEGORIES=["Food & Dining","Groceries & Quick-commerce","Rent & Utilities
  "Credit Card Bill","Other / Misc","Investments","Savings/FD","Income"];
 const NONSPEND=new Set(["Investments","Savings/FD","Income"]);
 const CAT_COLOR={
- "Food & Dining":"#F97949","Groceries & Quick-commerce":"#31C48D","Rent & Utilities":"#26C296",
- "Travel & Transport":"#2DD4A7","Fuel":"#4D9FFF","Shopping":"#F4506E","Health & Pharmacy":"#5FD0C0",
- "Subscriptions":"#F5B84D","Sports & Leisure":"#56CCF2","Electronics & Repairs":"#C49A6C",
- "Friends & Splitwise":"#FF77A9","Govt & Fees":"#8794B8","Credit Card Bill":"#E0B84D",
- "Other / Misc":"#6E7BA0","Investments":"#31C48D","Savings/FD":"#2DD4A7","Income":"#10B981"};
-const colorFor=(c)=>CAT_COLOR[c]||"#6E7BA0";
+ "Food & Dining":"#EF6820","Groceries & Quick-commerce":"#067647","Rent & Utilities":"#0E9384",
+ "Travel & Transport":"#175CD3","Fuel":"#444CE7","Shopping":"#C11574","Health & Pharmacy":"#0E9384",
+ "Subscriptions":"#DC6803","Sports & Leisure":"#2E90FA","Electronics & Repairs":"#B54708",
+ "Friends & Splitwise":"#DD2590","Govt & Fees":"#475467","Credit Card Bill":"#B54708",
+ "Other / Misc":"#667085","Investments":"#067647","Savings/FD":"#0E9384","Income":"#067647"};
+const colorFor=(c)=>CAT_COLOR[c]||"#667085";
 
 const SUB_SERVICES=[
  {k:["NETFLIX"],name:"Netflix"},{k:["YOUTUBE"],name:"YouTube Premium"},
@@ -362,34 +362,60 @@ function computeDecisionInsights(port){
    we keep showing statement values.
    ============================================================ */
 const navNorm=s=>String(s||"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
-async function fetchLiveNAVs(funds){
+const NAV_TTL=6*60*60*1000; // NAVs update once a day; refresh at most every 6h
+
+async function matchSchemeCode(name){
+  const q=navNorm(name).split(" ").slice(0,4).join(" ");
+  const res=await fetch("https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
+  if(!res.ok)return null;
+  const list=await res.json();
+  if(!Array.isArray(list))return null;
+  const tokens=navNorm(name).split(" ").filter(t=>t.length>1);
+  let best=null,bestScore=0;
+  for(const c of list){
+    const cn=navNorm(c.schemeName);
+    let score=tokens.filter(t=>cn.includes(t)).length/Math.max(tokens.length,1);
+    if(/direct/.test(navNorm(name))!==/direct/.test(cn))score-=0.5;
+    if(/idcw|dividend|bonus/.test(cn))score-=0.4;
+    if(score>bestScore){bestScore=score;best=c;}
+  }
+  return (best&&bestScore>=0.75)?{schemeCode:best.schemeCode,matched:best.schemeName}:null;
+}
+
+/* Fetch live NAVs with a localStorage cache: scheme-code matches are
+   remembered forever, NAV values for NAV_TTL. Pass {force:true} to
+   bypass the TTL (manual refresh). Always best-effort. */
+async function fetchLiveNAVs(funds,opts){
+  const force=!!(opts&&opts.force);
   const names=[...new Set((funds||[]).map(f=>f.name))];
+  const cache=LS.get("navcache",{})||{};
   const out={};
   await Promise.all(names.map(async name=>{
+    const c=cache[name]||{};
+    if(!force&&c.nav&&Date.now()-(c.ts||0)<NAV_TTL){
+      out[name]={nav:c.nav,date:c.date,matched:c.matched};
+      return;
+    }
     try{
-      const q=navNorm(name).split(" ").slice(0,4).join(" ");
-      const res=await fetch("https://api.mfapi.in/mf/search?q="+encodeURIComponent(q));
-      if(!res.ok)return;
-      const list=await res.json();
-      if(!Array.isArray(list))return;
-      const tokens=navNorm(name).split(" ").filter(t=>t.length>1);
-      let best=null,bestScore=0;
-      for(const c of list){
-        const cn=navNorm(c.schemeName);
-        let score=tokens.filter(t=>cn.includes(t)).length/Math.max(tokens.length,1);
-        if(/direct/.test(navNorm(name))!==/direct/.test(cn))score-=0.5;
-        if(/idcw|dividend|bonus/.test(cn))score-=0.4;
-        if(score>bestScore){bestScore=score;best=c;}
+      if(!c.schemeCode){
+        const m=await matchSchemeCode(name);
+        if(!m)return;
+        c.schemeCode=m.schemeCode; c.matched=m.matched;
       }
-      if(!best||bestScore<0.75)return;
-      const nres=await fetch("https://api.mfapi.in/mf/"+best.schemeCode+"/latest");
-      if(!nres.ok)return;
+      const nres=await fetch("https://api.mfapi.in/mf/"+c.schemeCode+"/latest");
+      if(!nres.ok)throw new Error("nav fetch failed");
       const nj=await nres.json();
       const nav=parseFloat(nj&&nj.data&&nj.data[0]&&nj.data[0].nav);
-      if(!isFinite(nav)||nav<=0)return;
-      out[name]={nav,date:nj.data[0].date,matched:best.schemeName};
-    }catch(e){/* best-effort */}
+      if(!isFinite(nav)||nav<=0)throw new Error("bad nav");
+      c.nav=nav; c.date=nj.data[0].date; c.ts=Date.now();
+      cache[name]=c;
+      out[name]={nav:c.nav,date:c.date,matched:c.matched};
+    }catch(e){
+      // network/API failure: serve stale cache if we have one
+      if(c.nav)out[name]={nav:c.nav,date:c.date,matched:c.matched};
+    }
   }));
+  LS.set("navcache",cache);
   return out;
 }
 
