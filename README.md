@@ -116,9 +116,9 @@ Without it the portfolio still works, but stays on the device you imported it on
 
 ---
 
-## AI portfolio insights (weekly, powered by Claude)
+## AI portfolio insights (deep, twice a month, powered by Claude)
 
-Optional: a Supabase **Edge Function** (`supabase/functions/weekly-portfolio-insights`) that runs weekly, reads your holdings, pulls **live prices** (Yahoo Finance) and **recent news** (Google News) for each stock, and asks **Claude** for a fundamentals-grounded review — portfolio health, holding-level notes tied to real news, watch items, and rebalancing considerations. The latest report appears at the top of the Portfolio tab.
+Optional: a Supabase **Edge Function** (`supabase/functions/portfolio-insights`) that runs on the **1st and 15th of every month**, reads your holdings, and builds a full fundamental dossier per stock — **live price & 52-week range, P/E, P/B, dividend yield, ROE, margins, revenue/earnings growth, debt/equity, 6-month momentum, analyst targets** (Yahoo Finance) plus **recent headlines** (Google News). It then asks **Claude (Opus)** — with live **web search** enabled so it can verify the latest quarterly results and news itself — for a deep review: a portfolio verdict, a per-holding thesis status (**Strong / Holding up / Weakening / Broken**) with the numbers that matter, a mutual-fund check, a dated watch list for the fortnight, and up to 4 ranked actions to consider. The latest report appears at the top of the Portfolio tab.
 
 ### 1. Create the insights table
 
@@ -148,34 +148,36 @@ supabase login
 supabase link --project-ref <your-project-ref>
 supabase secrets set ANTHROPIC_API_KEY=sk-ant-...
 supabase secrets set CRON_SECRET=<any-long-random-string>
-supabase functions deploy weekly-portfolio-insights --no-verify-jwt
+supabase functions deploy portfolio-insights --no-verify-jwt
 ```
 
-### 3. Schedule it weekly
+### 3. Schedule it (1st & 15th of every month)
 
-SQL Editor → run (enables pg_cron + pg_net and schedules Sunday 7 AM IST):
+SQL Editor → run (enables pg_cron + pg_net and schedules 08:00 IST on the 1st and 15th):
 
 ```sql
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
 select cron.schedule(
-  'weekly-portfolio-insights',
-  '30 1 * * 0',  -- 01:30 UTC = 07:00 IST every Sunday
+  'portfolio-insights',
+  '30 2 1,15 * *',  -- 02:30 UTC = 08:00 IST on the 1st and 15th
   $$
   select net.http_post(
-    url := 'https://<your-project-ref>.supabase.co/functions/v1/weekly-portfolio-insights',
+    url := 'https://<your-project-ref>.supabase.co/functions/v1/portfolio-insights',
     headers := jsonb_build_object('x-cron-secret', '<same-CRON_SECRET-as-above>')
   );
   $$
 );
 ```
 
-To test immediately without waiting for Sunday:
+If you previously scheduled the old weekly job, remove it first: `select cron.unschedule('weekly-portfolio-insights');`
+
+To test immediately without waiting for the 1st/15th:
 
 ```bash
-curl -X POST "https://<your-project-ref>.supabase.co/functions/v1/weekly-portfolio-insights" \
+curl -X POST "https://<your-project-ref>.supabase.co/functions/v1/portfolio-insights" \
   -H "x-cron-secret: <your-CRON_SECRET>"
 ```
 
-**Cost**: one weekly Claude call per user analyzing a typical portfolio costs a few rupees a month. Yahoo Finance and Google News lookups are free and best-effort — if either is unreachable, the analysis still runs from your statement data.
+**Cost**: each report is a single deep Claude (Opus) call with extended thinking and up to 12 web searches — roughly ₹25–40 per report, so about ₹50–80 per user per month at two reports. Yahoo Finance and Google News lookups are free and best-effort — if either is unreachable, Claude still analyzes from your statement data plus its own web searches.
