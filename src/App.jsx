@@ -1135,9 +1135,9 @@ function AIInsightPanel({user}){
       {state.loading?<div style={{fontSize:13,color:"var(--txt3)"}}>Checking for your latest analysis…</div>:
        state.row?<MiniMarkdown text={state.row.content}/>:
        <div style={{fontSize:13,color:"var(--txt2)",lineHeight:1.7}}>
-         No AI analysis yet. Once the weekly insights function is set up (see the <b>AI insights</b> section of the README —
-         a Supabase Edge Function that reads your holdings, pulls live prices &amp; news, and asks Claude for a
-         fundamentals-grounded review), your weekly report will appear here automatically.
+         No AI analysis yet. Once the insights function is set up (see the <b>AI insights</b> section of the README —
+         a Supabase Edge Function that reads your holdings, pulls fundamentals &amp; news, and asks Claude for a
+         deep fundamentals-backed review), a fresh report will appear here on the <b>1st and 15th</b> of every month.
        </div>}
     </div>
   );
